@@ -1,6 +1,5 @@
 ---
 title: Self Driving Cart
-layout: post
 ---
 
 # Hello, world!
