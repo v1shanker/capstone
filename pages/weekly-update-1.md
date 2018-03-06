@@ -9,7 +9,8 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **Vikram**
 
-Spent too much time making a website, but not much else.
+Spent too much time making a website so he can pretend he did something
+productive, but didn't actually do shit.
 
 **David**
 
