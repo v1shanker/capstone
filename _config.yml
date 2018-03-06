@@ -10,7 +10,9 @@ highlighter: rouge
 #
 title : Self-Driving Cart
 author :
-  name : John Doe
+  name : Vikram Shanker, Naveen Setlur, David Simon
+  email : "{vshanker, nsetlur, dasimon}@andrew.cmu.edu"
+  github : github.com/v1shanker/self-driving-cart
 
 # NOTE: If replacing this next line with your own URL, you likely want "https://" not "http://"
 production_url : https://v1shanker.github.io/self-driving-cart
