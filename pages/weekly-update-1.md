@@ -1,5 +1,5 @@
 ---
-layout: page
+layout: default
 title: Self-Driving Cart
 tagline: Team C9 Project Website
 description: Minimal tutorial on making a simple website with GitHub Pages
