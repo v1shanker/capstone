@@ -9,8 +9,9 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **Vikram**
 
-Spent too much time making a website so he can pretend he did something
-productive, but didn't actually do shit.
++ Created the website.
++ Started assmebling the chassis.
++ Wrote the design document.
 
 **David**
 
