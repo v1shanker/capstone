@@ -11,7 +11,7 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 + Created the website.
 + Started assmebling the chassis.
-+ Wrote the design document.
++ Co-wrote the design document.
 
 **David**
 
