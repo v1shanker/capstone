@@ -15,7 +15,11 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **David**
 
-Added a bunch of empty files to GitHub to up his commit stats.
++ Created skeleton ESP and Android projects
++ Confirmed UART communication between existing Android app and ESP32
++ Scheduled tasks and made Gantt chart
++ Defined serial AT commands interface for health check and motor control
++ Co-wrote the design document
 
 **Naveen**
 
