@@ -10,7 +10,7 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 **Vikram**
 
 + Created the website.
-+ Started assmebling the chassis.
++ Started assembling the chassis.
 + Co-wrote the design document.
 
 **David**
@@ -23,4 +23,6 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **Naveen**
 
-Took a nap because pthreads doesn't work on Windows. Sad!
++ Downloaded April Tag library and openCV library
++ Set up and compiled April Tag library in Visual Studio
++ Co-wrote the design document
