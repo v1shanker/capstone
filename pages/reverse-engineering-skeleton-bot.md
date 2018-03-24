@@ -37,8 +37,8 @@ motors. The following rules govern the expectation of the format of each speed
 value.
 
 + The speed value is represented as signed magnitude
-  * most significant bit of **0** is forward
-  * most significant bit of **1** is reverse
+  * most significant bit of **0** is **forward**
+  * most significant bit of **1** is **reverse**
 
 + The magnitude of each bit should be between **0** and **100**.
 
