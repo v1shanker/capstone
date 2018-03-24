@@ -27,7 +27,7 @@ is shown below.
 /** @brief second magic end byte */
 #define END2      0x45
 
-data = {START1, START2, SPEED_LEFT, SPEED_RIGHT, END1, END2}
+unsigned char data[6] = {START1, START2, SPEED_LEFT, SPEED_RIGHT, END1, END2}
 ```
 
 ## Speed Format
