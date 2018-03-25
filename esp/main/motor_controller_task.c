@@ -8,13 +8,15 @@
 */
 
 #include "driver/i2c.h"
+#include "esp_system.h"
+#include "esp_spi_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "logger.h"
-#include "esp_system.h"
-#include "esp_spi_flash.h"
 #include "motor_controller_task.h"
 #include "util_i2c.h"
+
+#define PD_PASS_FIX_HACK                   1                /* For some reason pdPass won't define. Need to fix */
 
 #define DELAY_MS                           5000             /*!< Task delay of 5 seconds */
 
@@ -28,17 +30,17 @@
 #define SPEED_80_REVERSE                   0xD0             /*!< signed magnitude representatin of -80 */
 
 #define MOTOR_CONTROLLER_DATA_SIZE         6
-static uint8_t motor_controller_data[MOTOR_CONTROLLER_SIZE] =
-        { START1, START2, SPEED_80_FORWARD, SPEED_80_FORWARD, END1, END2 }
+static uint8_t motor_controller_data[MOTOR_CONTROLLER_DATA_SIZE] =
+        { START1, START2, SPEED_80_FORWARD, SPEED_80_FORWARD, END1, END2 };
 
-static void motor_controller_task_fn( void ) {
-    i2c_master_init( void );
+static void motor_controller_task_fn( void *args ) {
+    i2c_master_init();
     while (1) {
         ESP_LOGE(_V, "I2C write start\n");
         i2c_motor_controller_write(
                 I2C_MASTER_NUM,
                 MOTOR_CONTROLLER_ADDR,
-                &motor_controller_data,
+                motor_controller_data,
                 MOTOR_CONTROLLER_DATA_SIZE);
         ESP_LOGE(_V, "I2C write end\n");
 
@@ -51,7 +53,7 @@ void create_motor_controller_task( void ) {
     BaseType_t x_returned;
     TaskHandle_t x_task_handle;
 
-    x_returned = TaskCreate(motor_controller_task_fn, /* task function */
+    x_returned = xTaskCreate(&motor_controller_task_fn, /* task function */
                             "Motor Controller Task", /* Task Name */
                             MOTOR_CONTROLLER_STACK_DEPTH, /* usStackDepth - number of words */
                             NULL, /* pvParameters */
@@ -59,7 +61,7 @@ void create_motor_controller_task( void ) {
                             &x_task_handle /* reference to the task created */
                            );
 
-    if (x_returned != pdPass) {
+    if (x_returned != PD_PASS_FIX_HACK) {
       ESP_LOGE(_G, "Failed to start motor controller task");
     }
 }

@@ -37,5 +37,5 @@ void app_main( void ) {
             spi_flash_get_chip_size() / (1024 * 1024),
             (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
 
-    create_motor_controller_task( void );
+    create_motor_controller_task();
 }

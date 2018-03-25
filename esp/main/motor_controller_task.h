@@ -7,6 +7,8 @@
  *  @bug No known bugs.
 */
 
+#ifndef _MOTOR_CONTROLLER_TASK_H_
+
 #define MOTOR_CONTROLLER_STACK_DEPTH (2048)
 #define MOTOR_CONTROLLER_TASK_PRIO   (2)
 
@@ -18,3 +20,5 @@
  *  @return void
  */
 void create_motor_controller_task( void );
+
+#endif /* _MOTOR_CONTROLLER_TASK_H_ */
