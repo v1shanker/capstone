@@ -68,7 +68,7 @@ static esp_err_t i2c_master_init( void ) {
  */
 static esp_err_t i2c_motor_controller_write (
         i2c_port_t i2c_num,
-        uint8_t addr,
+        uint8_t slave_addr,
         uint8_t *data,
         size_t size) {
 
@@ -77,7 +77,7 @@ static esp_err_t i2c_motor_controller_write (
 
     cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, ( addr << 1 ) | WRITE_BIT, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, ( slave_addr << 1 ) | WRITE_BIT, ACK_CHECK_EN);
     i2c_master_write(cmd, data, size, ACK_CHECK_EN);
     i2c_master_stop(cmd);
     ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
