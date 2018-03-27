@@ -25,6 +25,9 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 ![ROS Master Chooser](images/ROS-master-chooser.png "ROS Master Chooser")
 
++ Currently figuring out how to cross-compile C++ ROS Packages for use in the app via the Android NDK
++ Blocked on build errors
+
 
 **Naveen**
 
