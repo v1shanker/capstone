@@ -9,8 +9,11 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **Vikram**
 
-+ Assembled chassis
++ Finished Assembling chassis
++ Reverse engineering Herculues i2c protocol
++ REverse engineered the serial protocol
 + Wrote I2C driver to interface esp32 and chassis
++ Working on debugging why the atmega chip on the i2c driver cannot be flashed.
 
 **David**
 
