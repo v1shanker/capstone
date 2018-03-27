@@ -14,8 +14,17 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **David**
 
-+ Continued development on Android app
-+ Set up basic Android functionality to talk over serial interface (AT commands)
++ With Vikram, reverse-engineered the Hercules Motor Control Board interface
++ Aided assembling the chassis (soldered electrical connections)
++ De-soldered the Grove connector header for I2C and replaced it with wires soldered directly to the board
+
+![I2C Wires](images/i2c-solder.jpg "I2C Wires")
+
++ Compiled rosjava core packages for Android
++ Verified ROS communication with sample application to create ROS master node and test pub/sub communication
+
+![ROS Master Chooser](images/ROS-master-chooser.png "ROS Master Chooser")
+
 
 **Naveen**
 
