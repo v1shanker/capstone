@@ -13,4 +13,4 @@ a self-driving cart for 18-500, the ECE capstone at Carnegie Mellon University.
 # Weekly updates
 
 [Week of March 5th](pages/weekly-update-1.html)
-[Week of March 20th](pages/weekly-update-2.html)
+[Week of March 20th](pages/weekly-update-3.html)
