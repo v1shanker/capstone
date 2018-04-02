@@ -44,8 +44,8 @@ add_library(# Specifies the name of the library.
             src/main/apriltag/tag36h11.c
             )
 
-STRING(REPLACE "-O0" "-O4" CMAKE_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
-STRING(REPLACE "-O2" "-O4" CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
+STRING(REPLACE "-O0" "-O3" CMAKE_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
+STRING(REPLACE "-O2" "-O3" CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
 
 include_directories(src/main/apriltag/)
 
