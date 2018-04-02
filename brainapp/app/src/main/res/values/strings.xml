@@ -78,5 +78,6 @@
         <item>1080</item>
         <item>480</item>
     </string-array>
+    <string name="title_activity_usbhealth_check">SerialHealthCheckActivity</string>
 
 </resources>
