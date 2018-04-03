@@ -38,5 +38,8 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **Naveen**
 
-+ Connected to LIDAR using provided hardware
-+ Set up small demo that signalled STOP when front of LIDAR approached object
++ Ported C++ LIDAR SDK over to C code to compile on esp32
++ Set up serial connection between esp32 and LIDAR
++ Connected to LIDAR and read Serial number, managed to get basic data about angle and distance
++ Helped set up esp32 side of serial connection between Android phone
+
