@@ -9,11 +9,12 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **Vikram**
 
-+ Finished Assembling chassis
-+ Reverse engineering Herculues i2c protocol
-+ REverse engineered the serial protocol
-+ Wrote I2C driver to interface esp32 and chassis
-+ Working on debugging why the atmega chip on the i2c driver cannot be flashed.
++ Spent a lot of time debugging the chassis. Came to the conclusion that the
+  fuse bits are incorrectly programmed.
++ In contact with SeeedStudio support to get a replacement.
++ Found an alternate HBridge options.
++ Worked with David on ROS issues (described below)
++ Implemented and integrated apriltag detection in the brain app
 
 **David**
 
