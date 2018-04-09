@@ -59,6 +59,13 @@ static void echo_task()
     }
 }
 
+static void android_main(){
+	while (1);
+}
+
+static void lidar_main(){
+	while (1);
+}
 void app_main()
 {
 	uart_config_t uart_config1 = {
@@ -87,5 +94,6 @@ void app_main()
     uart_driver_install(UART_NUM_2, BUF_SIZE, 0, 0, NULL, 0);
 	
 	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
-    xTaskCreate(android, "android_interface", 4096, NULL, 10, NULL);
+    xTaskCreate(android_main, "android_interface", 4096, NULL, 10, NULL);
+	xTaskCreate(lidar_main, "android_interface", 4096, NULL, 10, NULL);
 }
