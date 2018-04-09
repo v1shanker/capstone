@@ -23,32 +23,20 @@
  * - Pin assignment: see defines below
  */
 
-#define ECHO_TEST_TXD  (GPIO_NUM_4)
-#define ECHO_TEST_RXD  (GPIO_NUM_5)
-#define ECHO_TEST_RTS  (UART_PIN_NO_CHANGE)
-#define ECHO_TEST_CTS  (UART_PIN_NO_CHANGE)
+#define PHONE_TXD  (GPIO_NUM_5)
+#define PHONE_RXD  (GPIO_NUM_17)
+#define LIDAR_TXD  (GPIO_NUM_16)
+#define LIDAR_RXD  (GPIO_NUM_4)
+#define SERIAL_RTS  (UART_PIN_NO_CHANGE)
+#define SERIAL_CTS  (UART_PIN_NO_CHANGE)
 
-#define BUF_SIZE (4096)
+#define BUF_SIZE (512)
 
 static void echo_task()
 {
     /* Configure parameters of an UART driver,
      * communication pins and install the driver */
-    uart_config_t uart_config = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-    };
-    uart_param_config(UART_NUM_1, &uart_config);
-    uart_set_pin(UART_NUM_1, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
-    uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, 0);
-
-    // Configure a temporary buffer for the incoming data
-    //uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
-	
-	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
+    
 	
 	size_t length;
 	int len;
@@ -73,5 +61,31 @@ static void echo_task()
 
 void app_main()
 {
-    xTaskCreate(echo_task, "uart_echo_task", 4096, NULL, 10, NULL);
+	uart_config_t uart_config1 = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+    };
+	
+	uart_config_t uart_config2 = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+    };
+	
+	/* Set up first serial connection */
+    uart_param_config(UART_NUM_1, &uart_config1);
+    uart_set_pin(UART_NUM_1, PHONE_TXD, PHONE_RXD, SERIAL_RTS, SERIAL_CTS);
+    uart_driver_install(UART_NUM_1, BUF_SIZE, 0, 0, NULL, 0);
+	
+	uart_param_config(UART_NUM_2, &uart_config2);
+    uart_set_pin(UART_NUM_2, LIDAR_TXD, LIDAR_RXD, SERIAL_RTS, SERIAL_CTS);
+    uart_driver_install(UART_NUM_2, BUF_SIZE, 0, 0, NULL, 0);
+	
+	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
+    xTaskCreate(android, "android_interface", 4096, NULL, 10, NULL);
 }
