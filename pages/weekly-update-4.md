@@ -18,9 +18,9 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **David**
 
-+ With Naveen, fleshed out the 
-+ Working on getting the brain logic to run in the background
-+ Did research into Android framework support for long-running jobs in the background
++ With Naveen, fleshed out the design of the AT command interface.
++ Working on getting the brain logic to run in the background.
++ Did research into Android framework support for long-running jobs in the background.
 + Android offers four means of running jobs in the background: AsyncTasks, Threading, Services,
   and IntentServices. Each is suited for different use cases.
 + Since AsyncTasks are not well-suited to long-running jobs, and Threading requires manual 
