@@ -5,7 +5,7 @@ tagline: Team C9 Project Website
 description: Minimal tutorial on making a simple website with GitHub Pages
 ---
 
-# Weekly Update 4
+# Weekly Update 4 (April 2nd - April 9th)
 
 **Vikram**
 
@@ -18,24 +18,22 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **David**
 
-+ Worked with Vikram to diagnose issues with Hercules Control Board
-+ Used [existing toolchain to cross-compile ROS C++ Packages for Android](http://github.com/ekumenlabs/roscpp_android)
-+ Found issues with toolchain's build output
-+ These issues prevent integration of C++ packages with Android JNI, so 
-  we are abandoning the prospect of using ROS packages. Instead we will use 
-  other solutions for integrating C++ packages (like AprilTags) and roll our
-  own solutions where needed. This means our capabilities down the road will
-  be less sophisticated than existing ROS solutions, but it means that rather
-  than running into brick walls applying poorly-documented tools, we will be
-  implementing our own solutions. 
-+ With Vikram, re-integrated AprilTags C++ library with Android, using
-  [existing JNI wrapper](http://github.com/johnjwang/apriltag-android) 
-  as a base. We will need to expand these JNI wrappers to expose more of the
-  underlying functionality which we will be depending on.
-+ Integrated [USB Serial Library for Android](http://github.com/mik3y/usb-serial-for-android)
-  into brain app
-+ With Naveen, implemented communications demo to discover attached USB device
-  and test read/write communication to a program running on the ESP32.
++ With Naveen, fleshed out the 
++ Working on getting the brain logic to run in the background
++ Did research into Android framework support for long-running jobs in the background
++ Android offers four means of running jobs in the background: AsyncTasks, Threading, Services,
+  and IntentServices. Each is suited for different use cases.
++ Since AsyncTasks are not well-suited to long-running jobs, and Threading requires manual 
+  lifecycle management, our choice is primarily between a Service and an IntentService.
++ A Service is not intended to run for a long time in the background, so Android will kill it unless
+  it displays some kind of UI like a notification.
++ An IntentService is the intended way for jobs to run in the background, but it requires an event to
+  fire periodically from some other service.
++ For our purposes, a Service is better suited - a notification is acceptable, but there is no
+  obvious external event to trigger the IntentService.
++ Currently working on managing the service lifecycle and laying framework for the main loop.
++ The loop will consist of reading sensor data, updating movement state information, repathing if
+  necessary, and issuing motor commands.
 
 **Naveen**
 

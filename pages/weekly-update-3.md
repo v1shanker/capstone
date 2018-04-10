@@ -5,35 +5,42 @@ tagline: Team C9 Project Website
 description: Minimal tutorial on making a simple website with GitHub Pages
 ---
 
-# Weekly Update 3
+# Weekly Update 3 (March 26th - April 2nd)
 
 **Vikram**
 
-+ Finished Assembling chassis
-+ Reverse engineering Herculues i2c protocol
-+ REverse engineered the serial protocol
-+ Wrote I2C driver to interface esp32 and chassis
-+ Working on debugging why the atmega chip on the i2c driver cannot be flashed.
++ Spent a lot of time debugging the chassis. Came to the conclusion that the
+  fuse bits are incorrectly programmed.
++ In contact with SeeedStudio support to get a replacement.
++ Found an alternate HBridge options.
++ Worked with David on ROS issues (described below)
++ Implemented and integrated apriltag detection in the brain app
 
 **David**
 
-+ With Vikram, reverse-engineered the Hercules Motor Control Board interface
-+ Aided assembling the chassis (soldered electrical connections)
-+ De-soldered the Grove connector header for I2C and replaced it with wires soldered directly to the board
-
-![I2C Wires](images/i2c-solder.jpg "I2C Wires")
-
-+ Compiled rosjava core packages for Android
-+ Verified ROS communication with sample application to create ROS master node and test pub/sub communication
-
-![ROS Master Chooser](images/ROS-master-chooser.png "ROS Master Chooser")
-
-+ Currently figuring out how to cross-compile C++ ROS Packages for use in the app via the Android NDK
-+ Blocked on build errors
-
++ Worked with Vikram to diagnose issues with Hercules Control Board
++ Used [existing toolchain to cross-compile ROS C++ Packages for Android](http://github.com/ekumenlabs/roscpp_android)
++ Found issues with toolchain's build output
++ These issues prevent integration of C++ packages with Android JNI, so 
+  we are abandoning the prospect of using ROS packages. Instead we will use 
+  other solutions for integrating C++ packages (like AprilTags) and roll our
+  own solutions where needed. This means our capabilities down the road will
+  be less sophisticated than existing ROS solutions, but it means that rather
+  than running into brick walls applying poorly-documented tools, we will be
+  implementing our own solutions. 
++ With Vikram, re-integrated AprilTags C++ library with Android, using
+  [existing JNI wrapper](http://github.com/johnjwang/apriltag-android) 
+  as a base. We will need to expand these JNI wrappers to expose more of the
+  underlying functionality which we will be depending on.
++ Integrated [USB Serial Library for Android](http://github.com/mik3y/usb-serial-for-android)
+  into brain app
++ With Naveen, implemented communications demo to discover attached USB device
+  and test read/write communication to a program running on the ESP32.
 
 **Naveen**
 
-+ Connected to LIDAR using provided hardware
-+ Set up small demo that signalled STOP when front of LIDAR approached object
++ Ported C++ LIDAR SDK over to C code to compile on esp32
++ Set up serial connection between esp32 and LIDAR
++ Connected to LIDAR and read Serial number, managed to get basic data about angle and distance
++ Helped set up esp32 side of serial connection between Android phone
 
