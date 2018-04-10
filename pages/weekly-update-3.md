@@ -5,7 +5,7 @@ tagline: Team C9 Project Website
 description: Minimal tutorial on making a simple website with GitHub Pages
 ---
 
-# Weekly Update 3 (March 26th - April 2nd)
+# Weekly Update 3 (3/26 - 4/2)
 
 **Vikram**
 
