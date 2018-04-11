@@ -10,6 +10,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/uart.h"
+#include "esp_log.h"
 
 /**
  * This is an example which echos any data it receives on UART1 back to the sender,
@@ -30,12 +31,15 @@
 #define SERIAL_RTS  (UART_PIN_NO_CHANGE)
 #define SERIAL_CTS  (UART_PIN_NO_CHANGE)
 
-#define BUF_SIZE (512)
+#define BUF_SIZE (1024)
+#define PATTERN_NUM 3
 
+static QueueHandle_t uart_queue;
+
+static const char *N = "Serial";
+/*
 static void echo_task()
 {
-    /* Configure parameters of an UART driver,
-     * communication pins and install the driver */
     
 	
 	size_t length;
@@ -58,16 +62,47 @@ static void echo_task()
 		}
     }
 }
+*/
+static void android_main()
+{
+	uart_event_t event;
+	size_t buffer_len;
+	int bytes_read;
+	int pos;
+	
+	uint8_t pattern_dump[512];
+	uint8_t data[512];
 
-static void android_main(){
-	while (1);
+	for (;;){
+		if(xQueueReceive(uart_queue, (void *)&event, (portTickType)portMAX_DELAY)) {
+			switch(event.type){
+				case UART_PATTERN_DET:
+					uart_get_buffered_data_len(UART_NUM_1, &buffer_len);
+					pos = uart_pattern_pop_pos(UART_NUM_1);
+					
+					uart_read_bytes(UART_NUM_1, pattern_dump, pos + 3, 20/portTICK_RATE_MS);
+					pattern_dump[pos+4] = '\0';
+					
+					bytes_read = uart_read_bytes(UART_NUM_1, data, buffer_len - pos - 1, 20/portTICK_RATE_MS);
+					data[buffer_len-pos] = '\0';
+					printf("Pattern buffer is %s\nData buffer is %s\n",pattern_dump, data);
+				default:
+					printf("Different event\n");
+			}
+		}
+		
+		
+	}
 }
 
 static void lidar_main(){
 	while (1);
 }
+
 void app_main()
 {
+	esp_log_level_set(N, ESP_LOG_INFO);
+	
 	uart_config_t uart_config1 = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
@@ -87,13 +122,19 @@ void app_main()
 	/* Set up first serial connection */
     uart_param_config(UART_NUM_1, &uart_config1);
     uart_set_pin(UART_NUM_1, PHONE_TXD, PHONE_RXD, SERIAL_RTS, SERIAL_CTS);
-    uart_driver_install(UART_NUM_1, BUF_SIZE, 0, 0, NULL, 0);
+    uart_driver_install(UART_NUM_1, BUF_SIZE, BUF_SIZE, 20, &uart_queue, 0);
 	
+	//Set uart pattern detect function.
+    uart_enable_pattern_det_intr(UART_NUM_1, '+', PATTERN_NUM, 10000, 10, 10);
+    //Reset the pattern queue length to record at most 20 pattern positions.
+    uart_pattern_queue_reset(UART_NUM_1, 20);
+
+	/*
 	uart_param_config(UART_NUM_2, &uart_config2);
     uart_set_pin(UART_NUM_2, LIDAR_TXD, LIDAR_RXD, SERIAL_RTS, SERIAL_CTS);
     uart_driver_install(UART_NUM_2, BUF_SIZE, 0, 0, NULL, 0);
-	
+	*/
 	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
     xTaskCreate(android_main, "android_interface", 4096, NULL, 10, NULL);
-	xTaskCreate(lidar_main, "android_interface", 4096, NULL, 10, NULL);
+	//xTaskCreate(lidar_main, "android_interface", 4096, NULL, 10, NULL);
 }
