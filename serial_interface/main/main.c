@@ -32,7 +32,7 @@
 #define SERIAL_CTS  (UART_PIN_NO_CHANGE)
 
 #define BUF_SIZE (1024)
-#define PATTERN_NUM 3
+#define PATTERN_NUM 1
 
 static QueueHandle_t uart_queue;
 
@@ -77,17 +77,17 @@ static void android_main()
 		if(xQueueReceive(uart_queue, (void *)&event, (portTickType)portMAX_DELAY)) {
 			switch(event.type){
 				case UART_PATTERN_DET:
-					uart_get_buffered_data_len(UART_NUM_1, &buffer_len);
+					/* Get actual data */
 					pos = uart_pattern_pop_pos(UART_NUM_1);
+					bytes_read = uart_read_bytes(UART_NUM_1, data, pos , 20/portTICK_RATE_MS);
+					data[pos] = '\0';
 					
-					uart_read_bytes(UART_NUM_1, pattern_dump, pos + 3, 20/portTICK_RATE_MS);
+					/* Remove pattern */
+					uart_read_bytes(UART_NUM_1, pattern_dump, 3, 20/portTICK_RATE_MS);
 					pattern_dump[pos+4] = '\0';
-					
-					bytes_read = uart_read_bytes(UART_NUM_1, data, buffer_len - pos - 1, 20/portTICK_RATE_MS);
-					data[buffer_len-pos] = '\0';
-					printf("Pattern buffer is %s\nData buffer is %s\n",pattern_dump, data);
+					printf("Pattern buffer is %s\nData buffer is %s\n\n",pattern_dump, data);
 				default:
-					printf("Different event\n");
+					printf("Different event\n\n");
 			}
 		}
 		
@@ -125,7 +125,7 @@ void app_main()
     uart_driver_install(UART_NUM_1, BUF_SIZE, BUF_SIZE, 20, &uart_queue, 0);
 	
 	//Set uart pattern detect function.
-    uart_enable_pattern_det_intr(UART_NUM_1, '+', PATTERN_NUM, 10000, 10, 10);
+    uart_enable_pattern_det_intr(UART_NUM_1, '\n', PATTERN_NUM, 10000, 10, 10);
     //Reset the pattern queue length to record at most 20 pattern positions.
     uart_pattern_queue_reset(UART_NUM_1, 20);
 
