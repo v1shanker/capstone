@@ -35,6 +35,9 @@
 #define PATTERN_NUM 1
 
 static QueueHandle_t uart_queue;
+static QueueHandle_t motor_in_queue;
+static QueueHandle_t lidar_in_queue;
+static QueueHandle_t android_out_queue;
 
 static const char *N = "Serial";
 /*
@@ -66,8 +69,7 @@ static void echo_task()
 static void android_main()
 {
 	uart_event_t event;
-	size_t buffer_len;
-	int bytes_read;
+	size_t bytes_read;
 	int pos;
 	
 	uint8_t pattern_dump[512];
@@ -85,9 +87,25 @@ static void android_main()
 					/* Remove pattern */
 					uart_read_bytes(UART_NUM_1, pattern_dump, 3, 20/portTICK_RATE_MS);
 					pattern_dump[pos+4] = '\0';
-					printf("Pattern buffer is %s\nData buffer is %s\n\n",pattern_dump, data);
+					printf("Data buffer is %s\n", data);
+					
+					/* Send to motor */
+					if (data[0] == 'M'){
+						xQueueSend(motor_in_queue, (void *)(data), (portTickType)portMAX_DELAY);
+					} 
+					
+					/* Send to LIDAR */
+					else if (data[0] == 'L'){
+						xQueueSend(lidar_in_queue, (void *)(data), (portTickType)portMAX_DELAY);
+					}
+					
+					else {
+						printf("My friend this could not have gone worse\n");
+					}
+					break;
 				default:
-					printf("Different event\n\n");
+					break;
+					//printf("Different event\n\n");
 			}
 		}
 		
@@ -96,9 +114,22 @@ static void android_main()
 }
 
 static void lidar_main(){
-	while (1);
+	char message[10];
+	for (;;){
+		if (xQueueReceive(lidar_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){	
+			printf("LIDAR Task: Message from android: %s\n\n",message);
+		}
+	}
 }
 
+static void motor_main(){
+	char message[10];
+	for (;;){
+		if (xQueueReceive(motor_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){	
+			printf("Motor Task: Message from android: %s\n\n",message);
+		}
+	}
+}
 void app_main()
 {
 	esp_log_level_set(N, ESP_LOG_INFO);
@@ -134,7 +165,12 @@ void app_main()
     uart_set_pin(UART_NUM_2, LIDAR_TXD, LIDAR_RXD, SERIAL_RTS, SERIAL_CTS);
     uart_driver_install(UART_NUM_2, BUF_SIZE, 0, 0, NULL, 0);
 	*/
-	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
-    xTaskCreate(android_main, "android_interface", 4096, NULL, 10, NULL);
-	//xTaskCreate(lidar_main, "android_interface", 4096, NULL, 10, NULL);
+	
+	//Create queues
+	motor_in_queue = xQueueCreate(10,sizeof(char)*15);
+	lidar_in_queue = xQueueCreate(10,sizeof(char)*15);
+	
+    xTaskCreate(android_main, "android_interface", 4096, NULL, 1, NULL);
+	xTaskCreate(lidar_main, "lidar_interface",4096, NULL, 2, NULL);
+	xTaskCreate(motor_main, "motor_interface",4096, NULL,2, NULL);
 }
