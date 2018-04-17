@@ -22,20 +22,16 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 + All components share a top-level store of all state information.
 + Within each frame, the app reads sensor data, calculates state updates, and
   communicates actuation commands to the ESP
-+ Created skeleton application logic, including no-op update methods for 
++ Created skeleton application logic, including no-op update methods for
   localization, obstacle detection, and pathing modules
 + With Vikram, planned map representation and mapping interface
 
 **Naveen**
 
-+ Met with David to flesh out AT interface
-+ ESP32 has a pattern recognition function for UART, may use that instead of AT which would require
-  less work than repeatedly scanning for characters "A""T".
-+ Decided to split esp32 operation into 3 parts.
-+ The android task will be responsible for any interactions with the phone. Incoming messages will be
-  distributed to the LIDAR or motor, depending on the command. There will also be an ACK bit sent back
-  to the phone to ensure that the command was successfully processed by the ESP32.
-+ The motor task will periodically check it's command buffer and process any commands, sending output
-  if necessary to the buffer that will then be sent back to the phone
-+ The LIDAR task will also check it's buffer and process any scan commands, sending output back to the buffer
-  which will then be sent back to the android phone
++ Set up message passing interface for the microcontroller
++ The current set up matches on "\n", which tells esp that entire command has been sent
++ The message is then sent to either the LIDAR or motor task, which currently
+  just prints out the message it has received
++ I tested this entire setup using an Arduino as the "phone", and was able to
+  sucessfully pass an incoming message from the "phone" to both the motor and
+  the LIDAR task
