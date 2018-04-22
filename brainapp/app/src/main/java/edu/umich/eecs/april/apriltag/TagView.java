@@ -247,93 +247,7 @@ public class TagView extends GLSurfaceView implements Camera.PreviewCallback {
         }
     }
 
-    static class LinesProgram {
-        private static final String vertexShaderCode =
-                "uniform mat4 uMVPMatrix;\n" +
-                "attribute vec4 aPosition;\n" +
-                "void main() {\n" +
-                "    gl_Position = uMVPMatrix * aPosition;\n" +
-                "}\n";
 
-        private static final String fragmentShaderCode =
-                "precision mediump float;\n" +
-                "uniform vec4 uColor;\n" +
-                "void main() {\n" +
-                "    gl_FragColor = uColor;\n" +
-                "}\n";
-
-        private FloatBuffer buffer;
-
-        int programId;
-
-        int aPositionLoc;
-        int uMVPMatrixLoc;
-        int uColorLoc;
-
-        public LinesProgram() {
-            // Compile the shader code into a GL program
-            int vid = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
-            int fid = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
-            programId = GLES20.glCreateProgram();
-            checkGlError("glCreateProgram");
-            GLES20.glAttachShader(programId, vid);
-            checkGlError("glAttachShader");
-            GLES20.glAttachShader(programId, fid);
-            checkGlError("glAttachShader");
-            GLES20.glLinkProgram(programId);
-            int[] linkStatus = new int[1];
-            GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0);
-            if (linkStatus[0] != GLES20.GL_TRUE) {
-                Log.e(TAG, "Could not link program: ");
-                Log.e(TAG, GLES20.glGetProgramInfoLog(programId));
-                GLES20.glDeleteProgram(programId);
-            }
-
-            // Get handles to attributes and uniforms
-            aPositionLoc = GLES20.glGetAttribLocation(programId, "aPosition");
-            checkGlError("get aPosition");
-            uMVPMatrixLoc = GLES20.glGetUniformLocation(programId, "uMVPMatrix");
-            checkGlError("get uMVPMatrix");
-            uColorLoc = GLES20.glGetUniformLocation(programId, "uColor");
-            checkGlError("get uColor");
-        }
-
-        // points = [x0 y0 x1 y1 ...]
-        // npoints = number of xy pairs in points (e.g. points is expected to have
-        //           a length of at least 2*npoints)
-        public void draw(float[] PVM, float[] points, int npoints, float[] rgba, int type) {
-            // Reuse points buffer if possible
-            if (buffer == null || 2*npoints > buffer.capacity()) {
-                int nbytes = 4 * 2*npoints;
-                ByteBuffer bb = ByteBuffer.allocateDirect(nbytes);
-                bb.order(ByteOrder.nativeOrder());
-                buffer = bb.asFloatBuffer();
-            }
-            buffer.position(0);
-            buffer.put(points, 0, 2*npoints);
-            buffer.position(0);
-
-            GLES20.glUseProgram(programId);
-            checkGlError("glUseProgram");
-
-            GLES20.glUniformMatrix4fv(uMVPMatrixLoc, 1, false, PVM, 0);
-            checkGlError("glUniformMatrix4fv");
-
-            GLES20.glUniform4fv(uColorLoc, 1, rgba, 0);
-            checkGlError("glUniform4fv");
-
-            // Render frame
-            GLES20.glEnableVertexAttribArray(aPositionLoc);
-            GLES20.glVertexAttribPointer(aPositionLoc, 2,
-                    GLES20.GL_FLOAT, false, 8, buffer);
-
-            GLES20.glLineWidth(4.0f);
-            GLES20.glDrawArrays(type, 0, npoints);
-
-            GLES20.glDisableVertexAttribArray(aPositionLoc);
-            GLES20.glUseProgram(0);
-        }
-    }
 
     static float[] COLOR_RED = new float[] {1.0f, 0.0f, 0.0f, 1.0f};
     static float[] COLOR_GREEN = new float[] {0.0f, 1.0f, 0.0f, 1.0f};
@@ -352,7 +266,7 @@ public class TagView extends GLSurfaceView implements Camera.PreviewCallback {
         float[] PVM = new float[16];
 
         YUVTextureProgram tp;
-        LinesProgram lp;
+
 
         public Renderer() {
             Matrix.setIdentityM(M, 0);
@@ -361,7 +275,6 @@ public class TagView extends GLSurfaceView implements Camera.PreviewCallback {
         public void onSurfaceCreated(GL10 gl, EGLConfig config) {
             //Log.i(TAG, "surface created");
             tp = new YUVTextureProgram();
-            lp = new LinesProgram();
 
             // Set the background frame color
             GLES20.glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -414,6 +327,11 @@ public class TagView extends GLSurfaceView implements Camera.PreviewCallback {
                         double y = 0.5 - (det.p[2*i + 0] / mPreviewSize.width);
                         points[2*i + 0] = (float)x;
                         points[2*i + 1] = (float)y;
+
+                        Log.e(TAG, String.format("ID : %d", det.id));
+                        Log.e(TAG, String.format("Center :(%f, %f)", det.c[0],det.c[1]));
+                        Log.e(TAG, String.format("Corners : %s", Arrays.toString(det.p)));
+                        Log.e(TAG, String.format("%d %d", mPreviewSize.width, mPreviewSize.height));
                     }
 
                     // Determine corner points
@@ -429,9 +347,9 @@ public class TagView extends GLSurfaceView implements Camera.PreviewCallback {
                                                       point_2[0], point_2[1], point_3[0], point_3[1]};
 
                     // Draw lines
-                    lp.draw(PVM, line_x, 2, COLOR_GREEN, GLES20.GL_LINES);
-                    lp.draw(PVM, line_y, 2, COLOR_RED, GLES20.GL_LINES);
-                    lp.draw(PVM, line_border, 4, COLOR_BLUE, GLES20.GL_LINES);
+                    //lp.draw(PVM, line_x, 2, COLOR_GREEN, GLES20.GL_LINES);
+                    //lp.draw(PVM, line_y, 2, COLOR_RED, GLES20.GL_LINES);
+                    //lp.draw(PVM, line_border, 4, COLOR_BLUE, GLES20.GL_LINES);
                 }
 
                 mDetections = null;
@@ -537,49 +455,5 @@ public class TagView extends GLSurfaceView implements Camera.PreviewCallback {
         thread.height = mPreviewSize.height;
         thread.parent = this;
         thread.run();
-
-        // Pass bytes to apriltag via JNI, get mDetections back
-        //long start = System.currentTimeMillis();
-        //mDetections = ApriltagNative.apriltag_detect_yuv(bytes, mPreviewSize.width, mPreviewSize.height);
-        //long diff = System.currentTimeMillis() - start;
-        //Log.i(TAG, "tag mDetections took " + diff + " ms");
-
-        // Render YUV image in OpenGL
-        //requestRender();
-
-        /*
-        // Render mDetections
-        // TODO do this in OpenGL so frames are synced up properly
-        Canvas canvas = overlay.lockCanvas();
-        canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.SRC);
-
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setStrokeWidth(5.0f);
-        p.setTextSize(50);
-        for (ApriltagDetection det : mDetections) {
-            //Log.i(TAG, "Tag detected " + det.id);
-
-            // The XY swap is due to portrait mode weirdness
-            // The mCamera image is 1920x1080 but the portrait bitmap is 1080x1920
-            p.setARGB(0xff, 0, 0xff, 0);
-            canvas.drawLine(mPreviewSize.height-(float)det.p[1], (float)det.p[0],
-                            mPreviewSize.height-(float)det.p[3], (float)det.p[2], p);
-            p.setARGB(0xff, 0xff, 0, 0);
-            canvas.drawLine(mPreviewSize.height-(float)det.p[1], (float)det.p[0],
-                            mPreviewSize.height-(float)det.p[7], (float)det.p[6], p);
-            p.setARGB(0xff, 0, 0, 0xff);
-            canvas.drawLine(mPreviewSize.height-(float)det.p[3], (float)det.p[2],
-                            mPreviewSize.height-(float)det.p[5], (float)det.p[4], p);
-            canvas.drawLine(mPreviewSize.height-(float)det.p[5], (float)det.p[4],
-                            mPreviewSize.height-(float)det.p[7], (float)det.p[6], p);
-            p.setARGB(0xff, 0, 0x99, 0xff);
-            canvas.drawText(Integer.toString(det.id),
-                            mPreviewSize.height-(float)det.c[1], (float)det.c[0], p);
-        }
-
-        p.setColor(0xffffffff);
-        canvas.drawText(Integer.toString(frameCount), 100, 100, p);
-        overlay.unlockCanvasAndPost(canvas);
-        //*/
     }
 }
