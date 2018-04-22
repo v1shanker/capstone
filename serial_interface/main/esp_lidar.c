@@ -11,48 +11,72 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/uart.h"
+#include "definitions.h"
 
-#define ECHO_TEST_TXD  (GPIO_NUM_4)
-#define ECHO_TEST_RXD  (GPIO_NUM_5)
-#define ECHO_TEST_RTS  (UART_PIN_NO_CHANGE)
-#define ECHO_TEST_CTS  (UART_PIN_NO_CHANGE)
 
-#define BUF_SIZE (1024)
-
-void lidar_setup()
-{
-    /* Configure parameters of an UART driver,
-     * communication pins and install the driver */
-    uart_config_t uart_config = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-    };
-    uart_param_config(UART_NUM_1, &uart_config);
-    uart_set_pin(UART_NUM_1, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
-    uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, 0);
-}
-
-void lidar_readBytes(char *buffer, size_t n){
+void getData(uint8_t *buffer, size_t bytes_required){
+	size_t buffered_len;
+	uart_event_t event;
 	
-	/*
-
-    // Configure a temporary buffer for the incoming data
-    //uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
-	char *string = "Hello\n";
-	const TickType_t xDelay = 500 / portTICK_PERIOD_MS;
-
-    while (1) {
-        // Read data from the UART
-        uart_write_bytes(UART_NUM_1, string, 7);
-		vTaskDelay( xDelay );
-    }
-	*/
+	if(xQueueReceive(lidar_uart_queue, (void *)&event, (portTickType)portMAX_DELAY)) {
+		switch(event.type){
+			case UART_DATA:
+				uart_get_buffered_data_len(LIDAR_PORT, &buffered_len);
+				if (buffered_len < bytes_required){
+					break;
+				}
+				
+				uart_read_bytes(LIDAR_PORT, buffer, bytes_required,20/portTICK_RATE_MS);
+				buffer[bytes_required] = '\0';
+				return;
+			default:
+				break;
+		}
+	}
+}
+	
+void getHeader(uint8_t *data)
+{
+	uart_event_t event;
+	size_t bytes_read;
+	size_t pos;
+	
+	uint8_t pattern_dump[4];
+	
+	if(xQueueReceive(lidar_uart_queue, (void *)&event, (portTickType)portMAX_DELAY)) {
+		switch(event.type){
+			case UART_PATTERN_DET:
+			
+				/* Get actual data */
+				pos = uart_pattern_pop_pos(LIDAR_PORT);
+				bytes_read = uart_read_bytes(LIDAR_PORT, data, pos , 20/portTICK_RATE_MS);
+				data[pos] = '\0';
+				
+				/* Remove pattern */
+				uart_read_bytes(LIDAR_PORT, pattern_dump, 3, 20/portTICK_RATE_MS);
+				pattern_dump[pos+1] = '\0';
+				printf("Data buffer is %s\n", data);
+				break;
+				
+			default:
+				break;
+		}
+	}
 	return;
 }
 
 void lidar_sendBytes(char *buffer, size_t n){
-	uart_write_bytes(UART_NUM_1, buffer, n);
+	uart_write_bytes(LIDAR_PORT, buffer, n);
+}
+
+void lidarScan(char *buffer){
+	char request[2] = {0xA5,0x20};
+	lidar_sendBytes(request,2);
+	
+	uint8_t header[10];
+	uint8_t data[22];
+	
+	/* Test with serial info */
+	getHeader(header);
+	getData(data,20);
 }

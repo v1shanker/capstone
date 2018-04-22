@@ -7,10 +7,12 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 #include <stdio.h>
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/uart.h"
 #include "esp_log.h"
+#include "definitions.h"
 
 /**
  * This is an example which echos any data it receives on UART1 back to the sender,
@@ -24,69 +26,30 @@
  * - Pin assignment: see defines below
  */
 
-#define PHONE_TXD  (GPIO_NUM_5)
-#define PHONE_RXD  (GPIO_NUM_17)
-#define LIDAR_TXD  (GPIO_NUM_16)
-#define LIDAR_RXD  (GPIO_NUM_4)
-#define SERIAL_RTS  (UART_PIN_NO_CHANGE)
-#define SERIAL_CTS  (UART_PIN_NO_CHANGE)
-
-#define BUF_SIZE (1024)
-#define PATTERN_NUM 1
-
-static QueueHandle_t uart_queue;
-static QueueHandle_t motor_in_queue;
-static QueueHandle_t lidar_in_queue;
-static QueueHandle_t android_out_queue;
 
 static const char *N = "Serial";
-/*
-static void echo_task()
-{
-    
-	
-	size_t length;
-	int len;
-	char buffer[3];
-	char response[3] = {'A', 'T', '!'};
-    while (1) {
-        length = 0;
-		len = 0;
-		while (length < 3){
-			uart_get_buffered_data_len(UART_NUM_1, &length);
-		}
-		len = uart_read_bytes(UART_NUM_1, (uint8_t*)buffer, 3, 20/ portTICK_RATE_MS);
-		
-		printf("Input of size %d: %c%c%c\n", len, buffer[0], buffer[1], buffer[2]);
-		
-		
-		if ((char)(buffer[0] == 'A') || (char)(buffer[1] == 'T') || (char)(buffer[2] == '?')){
-			uart_write_bytes(UART_NUM_1, response, 3);
-		}
-    }
-}
-*/
+
 static void android_main()
 {
 	uart_event_t event;
 	size_t bytes_read;
 	int pos;
 	
-	uint8_t pattern_dump[512];
+	uint8_t pattern_dump[5];
 	uint8_t data[512];
 
 	for (;;){
-		if(xQueueReceive(uart_queue, (void *)&event, (portTickType)portMAX_DELAY)) {
+		if(xQueueReceive(android_uart_queue, (void *)&event, (portTickType)portMAX_DELAY)) {
 			switch(event.type){
 				case UART_PATTERN_DET:
 					/* Get actual data */
-					pos = uart_pattern_pop_pos(UART_NUM_1);
-					bytes_read = uart_read_bytes(UART_NUM_1, data, pos , 20/portTICK_RATE_MS);
+					pos = uart_pattern_pop_pos(ANDROID_PORT);
+					bytes_read = uart_read_bytes(ANDROID_PORT, data, pos , 20/portTICK_RATE_MS);
 					data[pos] = '\0';
 					
 					/* Remove pattern */
-					uart_read_bytes(UART_NUM_1, pattern_dump, 3, 20/portTICK_RATE_MS);
-					pattern_dump[pos+4] = '\0';
+					uart_read_bytes(ANDROID_PORT, pattern_dump, 1, 20/portTICK_RATE_MS);
+					pattern_dump[1] = '\0';
 					printf("Data buffer is %s\n", data);
 					
 					/* Send to motor */
@@ -114,12 +77,19 @@ static void android_main()
 }
 
 static void lidar_main(){
-	char message[10];
+	char message[1024];
+	
+	//TODO: Reenable later
+	/*
 	for (;;){
 		if (xQueueReceive(lidar_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){	
 			printf("LIDAR Task: Message from android: %s\n\n",message);
 		}
 	}
+	*/
+	lidarScan(message);
+	
+	
 }
 
 static void motor_main(){
@@ -130,6 +100,7 @@ static void motor_main(){
 		}
 	}
 }
+
 void app_main()
 {
 	esp_log_level_set(N, ESP_LOG_INFO);
@@ -150,21 +121,28 @@ void app_main()
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
 	
-	/* Set up first serial connection */
-    uart_param_config(UART_NUM_1, &uart_config1);
-    uart_set_pin(UART_NUM_1, PHONE_TXD, PHONE_RXD, SERIAL_RTS, SERIAL_CTS);
-    uart_driver_install(UART_NUM_1, BUF_SIZE, BUF_SIZE, 20, &uart_queue, 0);
+	uart_config_t uart_config3 = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+    };
 	
-	//Set uart pattern detect function.
-    uart_enable_pattern_det_intr(UART_NUM_1, '\n', PATTERN_NUM, 10000, 10, 10);
-    //Reset the pattern queue length to record at most 20 pattern positions.
-    uart_pattern_queue_reset(UART_NUM_1, 20);
+	/* Set up android serial connection */
+    uart_param_config(ANDROID_PORT, &uart_config1);
+    uart_set_pin(ANDROID_PORT, PHONE_TXD, PHONE_RXD, SERIAL_RTS, SERIAL_CTS);
+    uart_driver_install(ANDROID_PORT, BUF_SIZE, BUF_SIZE, 20, &android_uart_queue, 0);
+    uart_enable_pattern_det_intr(ANDROID_PORT, '\n', PATTERN_NUM, 10000, 10, 10);
+	
+    /* Reset the pattern queue length to record at most 20 pattern positions. */
+    uart_pattern_queue_reset(ANDROID_PORT, 20);
 
-	/*
-	uart_param_config(UART_NUM_2, &uart_config2);
-    uart_set_pin(UART_NUM_2, LIDAR_TXD, LIDAR_RXD, SERIAL_RTS, SERIAL_CTS);
-    uart_driver_install(UART_NUM_2, BUF_SIZE, 0, 0, NULL, 0);
-	*/
+	/* Set up LIDAR serial connection */
+	uart_param_config(LIDAR_PORT, &uart_config2);
+    uart_set_pin(LIDAR_PORT, LIDAR_TXD, LIDAR_RXD, SERIAL_RTS, SERIAL_CTS);
+    uart_driver_install(LIDAR_PORT, BUF_SIZE, BUF_SIZE, 20, &lidar_uart_queue, 0);
+    uart_enable_pattern_det_intr(LIDAR_PORT, 0x04, PATTERN_NUM, 10000, 10, 10);
 	
 	//Create queues
 	motor_in_queue = xQueueCreate(10,sizeof(char)*15);
