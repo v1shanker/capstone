@@ -13,6 +13,19 @@
 #include "driver/uart.h"
 #include "definitions.h"
 
+void lidar_main(){
+	char message[1024];
+	
+	//TODO: Reenable later
+	/*
+	for (;;){
+		if (xQueueReceive(lidar_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){	
+			printf("LIDAR Task: Message from android: %s\n\n",message);
+		}
+	}
+	*/
+	lidarScan(message);	
+}
 
 void getData(uint8_t *buffer, size_t bytes_required){
 	size_t buffered_len;
@@ -71,6 +84,7 @@ void lidar_sendBytes(char *buffer, size_t n){
 
 void lidarScan(char *buffer){
 	char request[2] = {0xA5,0x20};
+	char stop[2] = {0xA5,0x25};
 	lidar_sendBytes(request,2);
 	
 	uint8_t header[10];
@@ -79,4 +93,6 @@ void lidarScan(char *buffer){
 	/* Test with serial info */
 	getHeader(header);
 	getData(data,20);
+	
+	lidar_sendBytes(stop,2);
 }

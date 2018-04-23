@@ -14,19 +14,6 @@
 #include "esp_log.h"
 #include "definitions.h"
 
-/**
- * This is an example which echos any data it receives on UART1 back to the sender,
- * with hardware flow control turned off. It does not use UART driver event queue.
- *
- * - Port: UART1
- * - Receive (Rx) buffer: on
- * - Transmit (Tx) buffer: off
- * - Flow control: off
- * - Event queue: off
- * - Pin assignment: see defines below
- */
-
-
 static const char *N = "Serial";
 
 static void android_main()
@@ -76,31 +63,6 @@ static void android_main()
 	}
 }
 
-static void lidar_main(){
-	char message[1024];
-	
-	//TODO: Reenable later
-	/*
-	for (;;){
-		if (xQueueReceive(lidar_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){	
-			printf("LIDAR Task: Message from android: %s\n\n",message);
-		}
-	}
-	*/
-	lidarScan(message);
-	
-	
-}
-
-static void motor_main(){
-	char message[10];
-	for (;;){
-		if (xQueueReceive(motor_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){	
-			printf("Motor Task: Message from android: %s\n\n",message);
-		}
-	}
-}
-
 void app_main()
 {
 	esp_log_level_set(N, ESP_LOG_INFO);
@@ -114,14 +76,6 @@ void app_main()
     };
 	
 	uart_config_t uart_config2 = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-    };
-	
-	uart_config_t uart_config3 = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
         .parity    = UART_PARITY_DISABLE,
@@ -144,7 +98,9 @@ void app_main()
     uart_driver_install(LIDAR_PORT, BUF_SIZE, BUF_SIZE, 20, &lidar_uart_queue, 0);
     uart_enable_pattern_det_intr(LIDAR_PORT, 0x04, PATTERN_NUM, 10000, 10, 10);
 	
-	//Create queues
+	uart_pattern_queue_reset(LIDAR_PORT, 20);
+	
+	//Create message queues
 	motor_in_queue = xQueueCreate(10,sizeof(char)*15);
 	lidar_in_queue = xQueueCreate(10,sizeof(char)*15);
 	

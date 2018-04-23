@@ -27,7 +27,6 @@
 #define PATTERN_NUM 1
 
 QueueHandle_t android_uart_queue;
-QueueHandle_t motor_uart_queue;
 QueueHandle_t lidar_uart_queue;
 
 QueueHandle_t motor_in_queue;
@@ -35,4 +34,6 @@ QueueHandle_t lidar_in_queue;
 QueueHandle_t android_out_queue;
 
 void lidarScan(char *buffer);
+void lidar_main();
+void motor_main();
 #endif
