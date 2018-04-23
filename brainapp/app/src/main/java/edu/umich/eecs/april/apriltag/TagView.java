@@ -351,7 +351,7 @@ public class TagView extends GLSurfaceView implements Camera.PreviewCallback {
                     //lp.draw(PVM, line_y, 2, COLOR_RED, GLES20.GL_LINES);
                     //lp.draw(PVM, line_border, 4, COLOR_BLUE, GLES20.GL_LINES);
                 }
-
+                SystemState.getInstance().setDetectedTagList(mDetections);
                 mDetections = null;
             }
 
