@@ -180,6 +180,23 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+
+        // launch the drive service
+        Intent serviceLaunchIntent = new Intent(this, DriveService.class);
+        startService(serviceLaunchIntent);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        Intent intent = new Intent(this, DriveService.class);
+        stopService(intent);
+    }
+
+    @Override
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {
         switch (requestCode) {
