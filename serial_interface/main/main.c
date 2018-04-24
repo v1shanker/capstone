@@ -118,6 +118,6 @@ void app_main()
 	
     xTaskCreate(android_rx_main, "android_rx, interface", 4096, NULL, 1, NULL);
 	xTaskCreate(android_tx_main, "android_tx, interface", 1024, NULL, 1, NULL);
-	xTaskCreate(lidar_main, "lidar_interface", 8192, NULL, 2, NULL);
+	xTaskCreate(lidar_main, "lidar_interface", 4096, NULL, 2, NULL);
 	xTaskCreate(motor_main, "motor_interface",4096, NULL,2, NULL);
 }
