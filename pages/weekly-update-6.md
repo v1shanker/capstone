@@ -9,12 +9,13 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **Vikram**
 
-+ Spent a lot of time debugging the chassis. Came to the conclusion that the
-  fuse bits are incorrectly programmed.
-+ In contact with SeeedStudio support to get a replacement.
-+ Found an alternate HBridge options.
-+ Worked with David on ROS issues (described below)
-+ Implemented and integrated apriltag detection in the brain app
++ Completed the AprilTag recognition acitivies.
++ Added interface for distance and phase calculations.
++ With DAVID, set up control of motors with new replacement h-bridge boards
+  using lab power supply and PWM signal from function generator
++ Debugged existing battery issues.
++ Designed the implemented the driver to control the chassis to control the
+  chassis programatically.
 
 **David**
 
