@@ -5,7 +5,7 @@ tagline: Team C9 Project Website
 description: Minimal tutorial on making a simple website with GitHub Pages
 ---
 
-# Weekly Update 5 (4/9 - 4/16)
+# Weekly Update 6 (4/16 - 4/23)
 
 **Vikram**
 
@@ -18,13 +18,15 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **David**
 
-+ Fleshed out high-level implementation details of 'brain app'
-+ All components share a top-level store of all state information.
-+ Within each frame, the app reads sensor data, calculates state updates, and
-  communicates actuation commands to the ESP
-+ Created skeleton application logic, including no-op update methods for
-  localization, obstacle detection, and pathing modules
-+ With Vikram, planned map representation and mapping interface
++ Integrated AprilTag recognition and serial communications into brain app 
+  update loop
++ Set up simple demo to report AprilTags recognized by brain app and sending
+  simple control commands to the ESP
++ Designed interface of occupancy grid map representation, including
+  AprilTag locations
++ With Vikram, set up control of motors with new replacement h-bridge boards
+  using lab power supply and PWM signal from function generator
++ With Vikram, helped debug issues with existing battery
 
 **Naveen**
 
