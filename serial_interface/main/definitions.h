@@ -40,6 +40,9 @@ QueueHandle_t motor_in_queue;
 QueueHandle_t lidar_in_queue;
 QueueHandle_t android_out_queue;
 
+typedef enum pulse_state_definitions {PULSE_HIGH, PULSE_LOW} pulse_state;
+typedef enum direction_states {FORWARD, REVERSE} direction;
+
 void lidarScan(char *buffer);
 void lidar_main();
 void motor_main();

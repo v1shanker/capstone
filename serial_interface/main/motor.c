@@ -14,7 +14,7 @@
 
 #define TIMER_DIVIDER         16 // Hardware time clock divider
 #define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
-#define TIMER_INTERVAL        1 // second
+#define DUTY_CYCLE_TICK     (TIMER_SCALE / 100 ) // this is 1 ms
 
 #define SET_BIT(n)                (1ULL << n)
 #define GPIO_PIN_BITMASK_LEFT     (SET_BIT(HBRIDGE_LEFT_IN1) | SET_BIT(HBRIDGE_LEFT_IN2) | SET_BIT(HBRIDGE_LEFT_PWM))
@@ -24,12 +24,12 @@
 #define LOGIC_HIGH            1
 #define LOGIC_LOW             0
 
+
 /** @brief signed magnitude representation of speed of motor
  *  positive is forward, negative is backwards
  *  should be between 0 and 100 (realisitically, 20 is more than enough) */
-static int8_t speed_dir_left_sm;
-static int8_t speed_dir_right_sm;
-static int counter;
+static volatile uint8_t speed;
+static pulse_state pwm_pulse_state;
 
 void getMessage(){
 	char message[10];
@@ -41,24 +41,59 @@ void getMessage(){
 }
 
 void IRAM_ATTR timer_isr(void *para) {
-
+    int next_interrupt_time = 0;
+    if (pwm_pulse_state == PULSE_LOW) {
+       if (speed > 0) {
+            next_interrupt_time = speed * DUTY_CYCLE_TICK;
+            pwm_pulse_state = PULSE_HIGH;
+            gpio_set_level(HBRIDGE_LEFT_PWM, LOGIC_HIGH);
+            gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_HIGH);
+        } else {
+            next_interrupt_time = 100 * DUTY_CYCLE_TICK;
+        }
+    } else if (pwm_pulse_state == PULSE_HIGH) {
+        next_interrupt_time = (100 - speed) * DUTY_CYCLE_TICK;
+        pwm_pulse_state = PULSE_LOW;
+        gpio_set_level(HBRIDGE_LEFT_PWM, LOGIC_LOW);
+        gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_LOW);
+    }
     // clear the interrupt
     TIMERG0.int_clr_timers.t0 = 1;
+    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, next_interrupt_time * TIMER_SCALE);
     // re-enable the alarm
     TIMERG0.hw_timer[TIMER_0].config.alarm_en = TIMER_ALARM_EN;
 }
 
-
-void set_speed_and_dir_left( int8_t speed_dir_left) {
-    speed_dir_left_sm = speed_dir_left;
+static void set_dir_left( direction dir ) {
+    if ( dir == REVERSE ) {
+        gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_HIGH);
+        gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_LOW);
+    } else { // forward
+        gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_LOW);
+        gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_HIGH);
+    }
 }
 
-void set_speed_and_dir_right(int8_t speed_dir_right) {
-    speed_dir_right_sm = speed_dir_right;
+static void set_dir_right( direction dir ) {
+    if ( dir == REVERSE ) {
+        gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_HIGH);
+        gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_LOW);
+    } else { // forward
+        gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_LOW);
+        gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_HIGH);
+    }
 }
 
+// only expose this as the public interface because the user
+// really needs to specify what all the wheels are doing at
+// a given time.
+void set_speed_and_dir(uint8_t new_speed, direction dir_right, direction dir_left) {
+    speed = new_speed;
+    set_dir_left(dir_left);
+    set_dir_right(dir_right);
+}
 
-void timer_pwm_interrupts_init() {
+static void timer_pwm_interrupts_init() {
     timer_config_t config;
 
     config.divider = TIMER_DIVIDER;
@@ -71,15 +106,16 @@ void timer_pwm_interrupts_init() {
 
     timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0x0ULL);
 
-    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, TIMER_INTERVAL * TIMER_SCALE);
+    pwm_pulse_state = PULSE_LOW;
+    int next_interrupt_ms = (100 - speed) * DUTY_CYCLE_TICK;
+    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, next_interrupt_ms * TIMER_SCALE);
     timer_enable_intr(TIMER_GROUP_0, TIMER_0);
     timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_isr, (void *) TIMER_0, ESP_INTR_FLAG_IRAM, NULL);
 
     timer_start(TIMER_GROUP_0, TIMER_0);
-
 }
 
-void gpio_setup() {
+static void gpio_setup() {
     gpio_config_t io_conf;
 
     io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
@@ -89,16 +125,25 @@ void gpio_setup() {
     io_conf.pull_up_en = 0;
     gpio_config(&io_conf);
 
+    // initialize all gpio levels
+    gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_LOW);
+    gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_LOW);
+    gpio_set_level(HBRIDGE_LEFT_PWM, LOGIC_HIGH);
+    gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_LOW);
+    gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_LOW);
+    gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_HIGH);
 }
 
 void motor_main() {
 
+    speed = 0;
     timer_pwm_interrupts_init();
     gpio_setup();
 
-    gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_HIGH);
+    // test to drive forward at 20% speed
+    // set_speed_and_dir(20, FORWARD, FORWARD);
 
-	while(1){
+    while(1){
 		getMessage();
 	}
 }
