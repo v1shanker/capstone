@@ -9,8 +9,8 @@
 #ifndef __DEFINITIONS_H
 #define __DEFINITIONS_H
 
-#define LIDAR_PORT UART_NUM_2
-#define ANDROID_PORT UART_NUM_1
+#define LIDAR_PORT UART_NUM_1
+#define ANDROID_PORT UART_NUM_2
 #define MOTOR_PORT UART_NUM_0
  
 #define PHONE_TXD  (GPIO_NUM_5)
@@ -22,7 +22,8 @@
 #define SERIAL_RTS  (UART_PIN_NO_CHANGE)
 #define SERIAL_CTS  (UART_PIN_NO_CHANGE)
 
-#define BUF_SIZE (1024)
+#define RX_SIZE (1024)
+#define TX_SIZE (256)
 
 #define PATTERN_NUM 1
 
@@ -33,7 +34,7 @@ QueueHandle_t motor_in_queue;
 QueueHandle_t lidar_in_queue;
 QueueHandle_t android_out_queue;
 
-void lidarScan(char *buffer);
+void lidarScan(char (*buffer)[5]);
 void lidar_main();
 void motor_main();
 #endif
