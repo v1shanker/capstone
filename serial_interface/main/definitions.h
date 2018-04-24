@@ -9,8 +9,8 @@
 #ifndef __DEFINITIONS_H
 #define __DEFINITIONS_H
 
-#define LIDAR_PORT UART_NUM_2
-#define ANDROID_PORT UART_NUM_1
+#define LIDAR_PORT UART_NUM_1
+#define ANDROID_PORT UART_NUM_2
 #define MOTOR_PORT UART_NUM_0
 
 #define PHONE_TXD  (GPIO_NUM_5)
@@ -22,14 +22,15 @@
 #define SERIAL_RTS  (UART_PIN_NO_CHANGE)
 #define SERIAL_CTS  (UART_PIN_NO_CHANGE)
 
+#define RX_SIZE (1024)
+#define TX_SIZE (256)
+
 #define HBRIDGE_LEFT_IN1   (GPIO_NUM_12)
 #define HBRIDGE_LEFT_IN2   (GPIO_NUM_14)
 #define HBRIDGE_LEFT_PWM   (GPIO_NUM_27)
 #define HBRIDGE_RIGHT_IN1   (GPIO_NUM_26)
 #define HBRIDGE_RIGHT_IN2   (GPIO_NUM_25)
 #define HBRIDGE_RIGHT_PWM   (GPIO_NUM_33)
-
-#define BUF_SIZE (1024)
 
 #define PATTERN_NUM 1
 
@@ -43,7 +44,6 @@ QueueHandle_t android_out_queue;
 typedef enum pulse_state_definitions {PULSE_HIGH, PULSE_LOW} pulse_state;
 typedef enum direction_states {FORWARD, REVERSE} direction;
 
-void lidarScan(char *buffer);
 void lidar_main();
 void motor_main();
 #endif
