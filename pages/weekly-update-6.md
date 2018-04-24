@@ -11,11 +11,14 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 + Completed the AprilTag recognition acitivies.
 + Added interface for distance and phase calculations.
-+ With DAVID, set up control of motors with new replacement h-bridge boards
-  using lab power supply and PWM signal from function generator
++ With David, set up control of motors with new replacement h-bridge boards
+  using lab power supply and PWM signal from function generator.
++ With David and Naveen, designed interface of occupancy grid map representation,
+  including AprilTag locations.
 + Debugged existing battery issues.
 + Designed the implemented the driver to control the chassis to control the
   chassis programatically.
++ Helped David with various android-based programming constructs.
 
 **David**
 
