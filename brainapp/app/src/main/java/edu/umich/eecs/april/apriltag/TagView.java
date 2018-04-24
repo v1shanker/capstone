@@ -319,7 +319,7 @@ public class TagView extends GLSurfaceView implements Camera.PreviewCallback {
                 Matrix.multiplyMM(PVM, 0, P, 0, PVM, 0);
 
                 tp.draw(PVM, mYuvBuffer, mPreviewSize.width, mPreviewSize.height);
-
+/*
                 float[] points = new float[8];
                 for (ApriltagDetection det : mDetections) {
                     for (int i = 0; i < 4; i += 1) {
@@ -350,7 +350,7 @@ public class TagView extends GLSurfaceView implements Camera.PreviewCallback {
                     //lp.draw(PVM, line_x, 2, COLOR_GREEN, GLES20.GL_LINES);
                     //lp.draw(PVM, line_y, 2, COLOR_RED, GLES20.GL_LINES);
                     //lp.draw(PVM, line_border, 4, COLOR_BLUE, GLES20.GL_LINES);
-                }
+                }*/
                 SystemState.getInstance().setDetectedTagList(mDetections);
                 mDetections = null;
             }
