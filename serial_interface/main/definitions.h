@@ -41,7 +41,6 @@ QueueHandle_t motor_in_queue;
 QueueHandle_t lidar_in_queue;
 QueueHandle_t android_out_queue;
 
-void lidarScan(char (*buffer)[5]);
 void lidar_main();
 void motor_main();
 #endif

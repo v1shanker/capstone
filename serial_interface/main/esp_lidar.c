@@ -13,6 +13,11 @@
 #include "driver/uart.h"
 #include "definitions.h"
 
+typedef struct _rplidar_response {
+	uint8_t sync_quality;
+	uint16_t angle_checkbit;
+	uint16_t distance;
+} __attribute__((packed)) rplidar_data;
 
 void getData(uint8_t *buffer, size_t bytes_required){
 	size_t buffered_len;
@@ -84,7 +89,7 @@ void lidar_sendBytes(char *buffer, size_t n){
 	uart_write_bytes(LIDAR_PORT, buffer, n);
 }
 
-void lidarScan(char (*buffer)[5]){
+void lidarScan(rplidar_data *buffer){
 	printf("Begin scan\n");
 	
 	char request[2] = {0xA5,0x20};
@@ -114,26 +119,22 @@ void lidarScan(char (*buffer)[5]){
 	lidar_sendBytes(stop,2); 
 	
 	printf("Finished retreiving data\n");
-	size_t angle;
-	size_t distance;
 	float angle_f;
 	float distance_f;
-	size_t quality;
+	uint8_t quality;
 	
 	for (int pos = 0; pos < 297 ; pos++) {
-		quality = ((size_t)(buffer[pos][0])) >> 2;
-		angle = (((size_t)(buffer[pos][2])) << 7) | (((size_t)(buffer[pos][1])) >> 1);
-		distance = (((size_t)(buffer[pos][4])) << 8) | ((size_t)(buffer[pos][3]));
 		
-		angle_f = (float)(angle)/(64.0f);
-		distance_f = (float)(distance)/(4.0f);
+		quality = buffer[pos].sync_quality >> 2;
+		angle_f = (float)(buffer[pos].angle_checkbit >> 1)/(64.0f);
+		distance_f = (float)(buffer[pos].distance)/(4.0f);
 				
 		printf("theta: %03.2f Dist: %08.2f Q: %d\n", angle_f, distance_f, quality);
 	} 
 }
 
 void lidar_main(){
-	char data[297][5];
+	rplidar_data data[297];
 	char message[20];
 	
 	lidarScan(data);	
