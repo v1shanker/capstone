@@ -34,10 +34,8 @@ description: Minimal tutorial on making a simple website with GitHub Pages
 
 **Naveen**
 
-+ Set up message passing interface for the microcontroller
-+ The current set up matches on "\n", which tells esp that entire command has been sent
-+ The message is then sent to either the LIDAR or motor task, which currently
-  just prints out the message it has received
-+ I tested this entire setup using an Arduino as the "phone", and was able to
-  sucessfully pass an incoming message from the "phone" to both the motor and
-  the LIDAR task
++ Set up message passing for sending motor commands to the PWM driver 
++ Set up other side of demo where motor start and start commands would be registered by ESP
++ Managed to retrieve scan data from LIDAR and process it on ESP - ran in to a lot of
+  subtle bugs when trying to get this to work. 
++ Discussed with David and Vikram how we're going to represent maps on Android app
