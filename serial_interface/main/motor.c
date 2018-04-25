@@ -2,10 +2,12 @@
  * @file motor.c
  * @brief Defines motor interface
  *
+ * @author Vikram Shanker (vshanker@andrew.cmu.edu)
  */
 
 #include <stdio.h>
 #include <string.h>
+#include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/timer.h"
@@ -71,7 +73,7 @@ void IRAM_ATTR timer_isr(void *para) {
     }
     // clear the interrupt
     TIMERG0.int_clr_timers.t0 = 1;
-    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, next_interrupt_time * TIMER_SCALE);
+    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, next_interrupt_time);
     // re-enable the alarm
     TIMERG0.hw_timer[TIMER_0].config.alarm_en = TIMER_ALARM_EN;
 }
@@ -113,18 +115,19 @@ static void timer_pwm_interrupts_init() {
     config.counter_en = TIMER_PAUSE;
     config.alarm_en = TIMER_ALARM_EN;
     config.intr_type = TIMER_INTR_LEVEL;
-    config.auto_reload = 1;
+    config.auto_reload = 0;
     timer_init(TIMER_GROUP_0, TIMER_0, &config);
 
-    timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0x0ULL);
+
+    ESP_ERROR_CHECK(timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0x0ULL));
 
     pwm_pulse_state = PULSE_LOW;
     int next_interrupt_ms = (100 - speed) * DUTY_CYCLE_TICK;
-    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, next_interrupt_ms * TIMER_SCALE);
-    timer_enable_intr(TIMER_GROUP_0, TIMER_0);
-    timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_isr, (void *) TIMER_0, ESP_INTR_FLAG_IRAM, NULL);
-
-    timer_start(TIMER_GROUP_0, TIMER_0);
+    ESP_ERROR_CHECK(timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, next_interrupt_ms));
+    ESP_ERROR_CHECK(timer_enable_intr(TIMER_GROUP_0, TIMER_0));
+    ESP_ERROR_CHECK(timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_isr, (void *) TIMER_0, ESP_INTR_FLAG_IRAM, NULL));
+    ESP_ERROR_CHECK(timer_start(TIMER_GROUP_0, TIMER_0));
+    return;
 }
 
 static void gpio_setup() {
@@ -147,15 +150,18 @@ static void gpio_setup() {
 }
 
 void motor_main() {
-
+    printf("Starting motor main\n");
     speed = 0;
-    timer_pwm_interrupts_init();
+    printf("gpio setup\n");
     gpio_setup();
-
+    vTaskDelay(100);
+    printf("Starting drive");
     // test to drive forward at 20% speed
-    // set_speed_and_dir(20, FORWARD, FORWARD);
-
+    set_speed_and_dir(20, FORWARD, FORWARD);
+    printf("timer setup\n");
+    vTaskDelay(100);
+    timer_pwm_interrupts_init();
     while(1){
-		getMessage();
+	    vTaskDelay(100);
 	}
 }

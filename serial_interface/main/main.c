@@ -116,8 +116,8 @@ void app_main()
 	motor_in_queue = xQueueCreate(10,sizeof(char)*15);
 	lidar_in_queue = xQueueCreate(10,sizeof(char)*15);
 
-    xTaskCreate(android_rx_main, "android_rx, interface", 4096, NULL, 1, NULL);
-	xTaskCreate(android_tx_main, "android_tx, interface", 1024, NULL, 1, NULL);
-	xTaskCreate(lidar_main, "lidar_interface", 4096, NULL, 2, NULL);
-	xTaskCreate(motor_main, "motor_interface",4096, NULL,2, NULL);
+    //xTaskCreate(android_rx_main, "android_rx, interface", 4096, NULL, 1, NULL);
+	//xTaskCreate(android_tx_main, "android_tx, interface", 1024, NULL, 1, NULL);
+	//xTaskCreate(lidar_main, "lidar_interface", 4096, NULL, 2, NULL);
+	xTaskCreate(motor_main, "motor_interface",8192, NULL,2, NULL);
 }
