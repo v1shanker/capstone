@@ -23,7 +23,7 @@
 #define SERIAL_RTS  (UART_PIN_NO_CHANGE)
 #define SERIAL_CTS  (UART_PIN_NO_CHANGE)
 
-#define RX_SIZE (1024)
+#define RX_SIZE (2048)
 #define TX_SIZE (256)
 
 #define HBRIDGE_LEFT_IN1   (GPIO_NUM_22)

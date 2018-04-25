@@ -15,6 +15,7 @@
 #include "definitions.h"
 
 #define MAX_POINTS 360
+#define DATA_POINTS 20
 
 typedef struct _rplidar_response {
 	uint8_t sync_quality;
@@ -119,11 +120,7 @@ int lidarScan(rplidar_data *buffer){
 	/* Get header info */
 	printf("Looking for data\n");
 	getHeader(header,20);
-	
-	for (int a = 0; a < 20; a++){
-		printf("header[%d] = %x\n", a, header[a]);
-	}
-	
+
 	/* Get actual data */
 	
 	buffer[0].sync_quality = 0;
@@ -151,7 +148,7 @@ int lidarScan(rplidar_data *buffer){
 	float distance_f;
 	uint8_t quality;
 	uint8_t sync;
-	
+	/*
 	for (int pos = 0; pos < count; pos++) {
 		sync = buffer[pos].sync_quality & 0x3;
 		quality = buffer[pos].sync_quality >> 2;
@@ -160,7 +157,7 @@ int lidarScan(rplidar_data *buffer){
 				
 		printf("theta: %03.2f Dist: %08.2f Q: %d S: %x\n", angle_f, distance_f, quality, sync);
 	} 
-	
+	*/
 	return count;
 }
 
@@ -181,7 +178,7 @@ int begin_scan(lidar_small *output){
 	}
 	
 	if (count < 260){
-		printf("Failed to acquire scan");
+		printf("Failed to acquire scan\n");
 		return -1;
 	}
 	
@@ -189,7 +186,7 @@ int begin_scan(lidar_small *output){
 	index = 0;
 	
 	/* Take best 10 points from 0 */
-	while (total != 10){
+	while (total != DATA_POINTS/2){
 		if ((data[index].sync_quality >> 2) != 0){
 			output[total].angle = data[index].angle_checkbit >> 1;
 			output[total].distance = data[index].distance;
@@ -203,7 +200,7 @@ int begin_scan(lidar_small *output){
 	
 	index = count - 1;
 	
-	while (total != 20){
+	while (total != DATA_POINTS){
 		if ((data[index].sync_quality >> 2) != 0){
 			output[total].angle = data[index].angle_checkbit >> 1;
 			output[total].distance = data[index].distance;
@@ -211,14 +208,21 @@ int begin_scan(lidar_small *output){
 		}
 		index--;
 	}
+/*
+	float sum;
+	for (total = 0; total < DATA_POINTS; i++){
+		sum += output[total].distance;
+	}
 	
 	printf("Scan successful!\n");
+	return sum/DATA_POINTS; */
 	return 0;
 }
 
 void lidar_main(){
-	lidar_small small[20];
+	lidar_small small[DATA_POINTS];
 	char message[20];
+	//printf("begin_scan(small);
 	
 	for (;;){
 		if (xQueueReceive(lidar_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){	

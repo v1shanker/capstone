@@ -34,25 +34,7 @@
 static volatile uint8_t speed;
 static pulse_state pwm_pulse_state;
 
-void getMessage(){
-	char message[10];
-	char *startMessage = "START";
-	char *stopMessage = "STOP";
 
-	for (;;){
-		if (xQueueReceive(motor_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){
-			if (!strcmp(message, "MSTART")){
-				printf("Starting motor\n");
-				xQueueSend(android_out_queue, (void *)(startMessage), (portTickType)portMAX_DELAY);
-			} else if (!strcmp(message, "MSTOP")){
-				printf("Stopping motor\n");
-				xQueueSend(android_out_queue, (void *)(stopMessage), (portTickType)portMAX_DELAY);
-			} else {
-				printf("Unknown command");
-			}
-		}
-	}
-}
 
 void IRAM_ATTR timer_isr(void *para) {
     int next_interrupt_time = 0;
@@ -79,22 +61,22 @@ void IRAM_ATTR timer_isr(void *para) {
 }
 
 static void set_dir_left( direction dir ) {
-    if ( dir == REVERSE ) {
+    if ( dir == FORWARD ) {
         gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_HIGH);
         gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_LOW);
     } else { // forward
         gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_LOW);
-        gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_HIGH);
+        gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_HIGH);
     }
 }
 
 static void set_dir_right( direction dir ) {
-    if ( dir == REVERSE ) {
+    if ( dir == FORWARD ) {
         gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_HIGH);
         gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_LOW);
     } else { // forward
         gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_LOW);
-        gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_HIGH);
+        gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_HIGH);
     }
 }
 
@@ -149,11 +131,33 @@ static void gpio_setup() {
     gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_LOW);
 }
 
+void getMessage(){
+	char message[10];
+	char *startMessage = "START";
+	char *stopMessage = "STOP";
+
+	for (;;){
+		if (xQueueReceive(motor_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){
+			if (!strcmp(message, "MFWD")){
+				printf("Starting motor\n");
+				set_speed_and_dir(30,FORWARD,FORWARD);
+			}
+			else if (!strcmp(message, "MBACK")){
+				printf("Stopping motor\n");
+				set_speed_and_dir(30,REVERSE, REVERSE);
+			} else if (!strcmp(message, "MSTOP")){
+				printf("Stopping motor\n");
+				set_speed_and_dir(0,FORWARD,FORWARD);
+			} else {
+				printf("Unknown command");
+			}
+		}
+	}
+}
+
 void motor_main() {
     set_speed_and_dir(0, FORWARD, FORWARD);
     gpio_setup();
     timer_pwm_interrupts_init();
-    while(1){
-	    vTaskDelay(100);
-	}
+	getMessage();
 }
