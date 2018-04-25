@@ -150,10 +150,8 @@ static void gpio_setup() {
 }
 
 void motor_main() {
-    speed = 0;
+    set_speed_and_dir(0, FORWARD, FORWARD);
     gpio_setup();
-    // test to drive forward at 20% speed
-    set_speed_and_dir(20, FORWARD, FORWARD);
     timer_pwm_interrupts_init();
     while(1){
 	    vTaskDelay(100);
