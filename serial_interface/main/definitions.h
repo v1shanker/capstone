@@ -3,6 +3,7 @@
  * @brief definitions for esp drivers
  *
  * @author Naveen
+ * @author Vikram Shanker (vshanker@andrew.cmu.edu)
  * @bug None
  */
 
@@ -25,9 +26,9 @@
 #define RX_SIZE (1024)
 #define TX_SIZE (256)
 
-#define HBRIDGE_LEFT_IN1   (GPIO_NUM_12)
-#define HBRIDGE_LEFT_IN2   (GPIO_NUM_14)
-#define HBRIDGE_LEFT_PWM   (GPIO_NUM_27)
+#define HBRIDGE_LEFT_IN1   (GPIO_NUM_22)
+#define HBRIDGE_LEFT_IN2   (GPIO_NUM_23)
+#define HBRIDGE_LEFT_PWM   (GPIO_NUM_21)
 #define HBRIDGE_RIGHT_IN1   (GPIO_NUM_26)
 #define HBRIDGE_RIGHT_IN2   (GPIO_NUM_25)
 #define HBRIDGE_RIGHT_PWM   (GPIO_NUM_33)
@@ -40,6 +41,9 @@ QueueHandle_t lidar_uart_queue;
 QueueHandle_t motor_in_queue;
 QueueHandle_t lidar_in_queue;
 QueueHandle_t android_out_queue;
+
+typedef enum pulse_state_definitions {PULSE_HIGH, PULSE_LOW} pulse_state;
+typedef enum direction_states {FORWARD, REVERSE} direction;
 
 void lidar_main();
 void motor_main();
