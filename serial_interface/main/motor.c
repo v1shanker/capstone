@@ -15,17 +15,17 @@
 #include "driver/uart.h"
 #include "definitions.h"
 
-#define TIMER_DIVIDER         16 // Hardware time clock divider
-#define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
-#define DUTY_CYCLE_TICK     (TIMER_SCALE / 100 ) // this is 1 ms
+#define TIMER_DIVIDER             16 // Hardware time clock divider
+#define TIMER_SCALE               (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
+#define DUTY_CYCLE_TICK           (TIMER_SCALE / 100 ) // this is 1 ms
 
 #define SET_BIT(n)                (1ULL << n)
 #define GPIO_PIN_BITMASK_LEFT     (SET_BIT(HBRIDGE_LEFT_IN1) | SET_BIT(HBRIDGE_LEFT_IN2) | SET_BIT(HBRIDGE_LEFT_PWM))
 #define GPIO_PIN_BITMASK_RIGHT    (SET_BIT(HBRIDGE_RIGHT_IN1) | SET_BIT(HBRIDGE_RIGHT_IN2) | SET_BIT(HBRIDGE_RIGHT_PWM))
 #define GPIO_PIN_BITMASK          GPIO_PIN_BITMASK_LEFT | GPIO_PIN_BITMASK_RIGHT
 
-#define LOGIC_HIGH            1
-#define LOGIC_LOW             0
+#define LOGIC_HIGH                1
+#define LOGIC_LOW                 0
 
 
 /** @brief signed magnitude representation of speed of motor
@@ -143,23 +143,17 @@ static void gpio_setup() {
     // initialize all gpio levels
     gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_LOW);
     gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_LOW);
-    gpio_set_level(HBRIDGE_LEFT_PWM, LOGIC_HIGH);
+    gpio_set_level(HBRIDGE_LEFT_PWM, LOGIC_LOW);
     gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_LOW);
     gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_LOW);
-    gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_HIGH);
+    gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_LOW);
 }
 
 void motor_main() {
-    printf("Starting motor main\n");
     speed = 0;
-    printf("gpio setup\n");
     gpio_setup();
-    vTaskDelay(100);
-    printf("Starting drive");
     // test to drive forward at 20% speed
     set_speed_and_dir(20, FORWARD, FORWARD);
-    printf("timer setup\n");
-    vTaskDelay(100);
     timer_pwm_interrupts_init();
     while(1){
 	    vTaskDelay(100);
