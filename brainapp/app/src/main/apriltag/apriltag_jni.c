@@ -2,6 +2,7 @@
 
 #include <android/bitmap.h>
 #include <android/log.h>
+#include <common/matd.h>
 
 #include "apriltag.h"
 #include "tag36h11.h"
@@ -18,9 +19,11 @@ static struct {
 
     jclass al_cls;
     jmethodID al_constructor, al_add;
+
     jclass ad_cls;
     jmethodID ad_constructor;
-    jfieldID ad_id_field, ad_hamming_field, ad_c_field, ad_p_field;
+    jfieldID ad_id_field, ad_hamming_field, ad_c_field, ad_p_field, ad_nrows_field, ad_ncols_field, ad_H_data_field;
+
 } state;
 
 JNIEXPORT void JNICALL Java_edu_umich_eecs_april_apriltag_ApriltagNative_native_1init
@@ -61,14 +64,28 @@ JNIEXPORT void JNICALL Java_edu_umich_eecs_april_apriltag_ApriltagNative_native_
         return;
     }
 
+    jclass matd_class = (*env)->FindClass(env, "edu/umich/eecs/april/apriltag/Matd");
+    if (!matd_class) {
+        __android_log_write(ANDROID_LOG_ERROR, "apriltag_jni",
+                            "couldn't find Matd class");
+        return;
+    }
+
     state.ad_id_field = (*env)->GetFieldID(env, ad_cls, "id", "I");
     state.ad_hamming_field = (*env)->GetFieldID(env, ad_cls, "hamming", "I");
     state.ad_c_field = (*env)->GetFieldID(env, ad_cls, "c", "[D");
     state.ad_p_field = (*env)->GetFieldID(env, ad_cls, "p", "[D");
+    state.ad_nrows_field = (*env)->GetFieldID(env, ad_cls, "nrows", "I");
+    state.ad_ncols_field = (*env)->GetFieldID(env, ad_cls, "ncols", "I");
+    state.ad_H_data_field = (*env)->GetFieldID(env, ad_cls, "H_data", "[D");
+
     if (!state.ad_id_field ||
             !state.ad_hamming_field ||
             !state.ad_c_field ||
-            !state.ad_p_field) {
+            !state.ad_p_field ||
+            !state.ad_nrows_field ||
+            !state.ad_ncols_field ||
+            !state.ad_H_data_field) {
         __android_log_write(ANDROID_LOG_ERROR, "apriltag_jni",
                             "couldn't find ApriltagDetection fields");
         return;
@@ -239,6 +256,12 @@ JNIEXPORT jobject JNICALL Java_edu_umich_eecs_april_apriltag_ApriltagNative_apri
         (*env)->SetDoubleArrayRegion(env, ad_c, 0, 2, det->c);
         jdoubleArray ad_p = (*env)->GetObjectField(env, ad, state.ad_p_field);
         (*env)->SetDoubleArrayRegion(env, ad_p, 0, 8, (double*)det->p);
+
+        (*env)->SetIntField(env, ad ,state.ad_nrows_field, det->H->nrows);
+        (*env)->SetIntField(env, ad, state.ad_ncols_field, det->H->ncols);
+
+        jdoubleArray matd_data = (*env)->GetObjectField(env, ad, state.ad_H_data_field);
+        (*env)->SetDoubleArrayRegion(env, matd_data, det->H->nrows, det->H->ncols, det->H->data);
 
         // al.add(ad);
         (*env)->CallBooleanMethod(env, al, state.al_add, ad);

@@ -69,4 +69,9 @@ public class ApriltagDetection {
     // Flattened to [x0 y0 x1 y1 ...] for JNI convenience
     public double[] p = new double[8];
 
+    // Homography matrix info extracted for convenience
+    public int ncols;
+    public int nrows;
+    public double[] H_data;
+
 }
