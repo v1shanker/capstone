@@ -9,6 +9,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -33,13 +34,30 @@ public class DriveService extends Service {
         List<ApriltagDetection> tags = mSystemState.getDetectedTagList();
         if (tags != null && !tags.isEmpty()) {
             StringBuilder sb = new StringBuilder();
-            sb.append("AprilTags: ");
+            sb.append("AprilTags:\n");
             for (ApriltagDetection tag : tags) {
                 int id = tag.id;
-                double dist = ApriltagDetection.getDistanceFromTag(tag);
-                double angle = ApriltagDetection.getAngleFromTag(tag);
 
-                sb.append(String.format(Locale.getDefault(), "(%d, %f, %f) ", id, dist, angle));
+                int nrows = tag.nrows;
+                int ncols = tag.ncols;
+                double[] H = tag.H_data;
+
+                Pose p = Localization.getPoseFromHomography(nrows, ncols, H);
+
+                if (p == null) {
+                    sb.append("  No pose estimation possible from ");
+                    sb.append(id);
+                    sb.append('\n');
+                } else {
+                    sb.append("  Pose from ");
+                    sb.append(id);
+                    sb.append(":\n    ");
+                    sb.append(Arrays.toString(p.tVec));
+                    sb.append("\n    ");
+                    sb.append(Arrays.toString(p.rMat));
+                    sb.append('\n');
+                }
+
             }
             Log.d(TAG, sb.toString());
         } else {

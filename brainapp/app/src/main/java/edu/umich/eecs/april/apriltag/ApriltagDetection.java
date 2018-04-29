@@ -72,6 +72,6 @@ public class ApriltagDetection {
     // Homography matrix info extracted for convenience
     public int ncols;
     public int nrows;
-    public double[] H_data;
+    public double[] H_data = new double[9];
 
 }
