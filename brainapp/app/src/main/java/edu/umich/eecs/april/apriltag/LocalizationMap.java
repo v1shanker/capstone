@@ -34,4 +34,16 @@ public class LocalizationMap {
         codeToPointMap = getCodeToPointMap();
     }
 
+    public Integer getObstruction(Point p) {
+        return obstructions.getOrDefault(p, 0);
+    }
+
+    public void setObstruction(Point p, Integer v) {
+        obstructions.put(p, v);
+    }
+
+    public Point getPointLocation(Integer i) {
+        return codeToPointMap.getOrDefault(i, null);
+    }
+
 }
