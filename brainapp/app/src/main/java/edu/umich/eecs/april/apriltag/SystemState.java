@@ -9,6 +9,7 @@ class SystemState {
     private static SystemState sInstance = null;
 
     private List<ApriltagDetection> mDetectedTags;
+    private LocalizationMap mLocalizationmap;
 
     public static SystemState getInstance() {
         if (sInstance == null) {
@@ -19,6 +20,7 @@ class SystemState {
 
     private SystemState() {
         mDetectedTags = null;
+        mLocalizationmap = LocalizationMap.getInstance();
     }
 
     @Nullable

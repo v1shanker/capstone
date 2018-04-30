@@ -45,5 +45,4 @@ public class LocalizationMap {
     public Point getPointLocation(Integer i) {
         return codeToPointMap.getOrDefault(i, null);
     }
-
 }
