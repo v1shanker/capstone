@@ -23,7 +23,7 @@ static void android_rx_main()
 	int pos;
 
 	uint8_t pattern_dump[5];
-	uint8_t data[512];
+	uint8_t message[MESSAGE_LEN];
 
 	for (;;){
 		if(xQueueReceive(android_uart_queue, (void *)&event, (portTickType)portMAX_DELAY)) {
@@ -31,22 +31,22 @@ static void android_rx_main()
 				case UART_PATTERN_DET:
 					/* Get actual data */
 					pos = uart_pattern_pop_pos(ANDROID_PORT);
-					bytes_read = uart_read_bytes(ANDROID_PORT, data, pos , 20/portTICK_RATE_MS);
-					data[pos] = '\0';
+					bytes_read = uart_read_bytes(ANDROID_PORT, message, pos , 20/portTICK_RATE_MS);
+					message[pos] = '\0';
 
 					/* Remove pattern */
 					uart_read_bytes(ANDROID_PORT, pattern_dump, 1, 20/portTICK_RATE_MS);
 					pattern_dump[1] = '\0';
-					printf("Data buffer is %s\n", data);
+					printf("Data buffer is %s\n", message);
 
 					/* Send to motor */
-					if (data[0] == 'M'){
-						xQueueSend(motor_in_queue, (void *)(data), (portTickType)portMAX_DELAY);
+					if (message[0] == 'M'){
+						xQueueSend(motor_in_queue, (void *)(message), (portTickType)portMAX_DELAY);
 					}
 
 					/* Send to LIDAR */
-					else if (data[0] == 'L'){
-						xQueueSend(lidar_in_queue, (void *)(data), (portTickType)portMAX_DELAY);
+					else if (message[0] == 'L'){
+						xQueueSend(lidar_in_queue, (void *)(message), (portTickType)portMAX_DELAY);
 					}
 
 					else {
@@ -64,10 +64,11 @@ static void android_rx_main()
 }
 
 static void android_tx_main(){
-	char message[20];
+	output_info temp;
+	
 	for (;;){
-		if (xQueueReceive(motor_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){
-			uart_write_bytes(ANDROID_PORT, message,6);
+		if (xQueueReceive(android_out_queue, (void *)(&temp),(portTickType)portMAX_DELAY)){
+				uart_write_bytes(ANDROID_PORT, temp.data,temp.size);
 		}
 	}
 }
@@ -98,9 +99,10 @@ void app_main()
     uart_set_pin(LIDAR_PORT, LIDAR_TXD, LIDAR_RXD, SERIAL_RTS, SERIAL_CTS);
     uart_driver_install(LIDAR_PORT, RX_SIZE, TX_SIZE, 300, &lidar_uart_queue, 0);
     uart_enable_pattern_det_intr(LIDAR_PORT, (char)0x81, PATTERN_NUM, 10000, 10, 10);
+	
 
     /* Reset the pattern queue length to record at most 20 pattern positions. */
-    //uart_pattern_queue_reset(LIDAR_PORT, 20);
+    uart_pattern_queue_reset(LIDAR_PORT, 20);
 
 	/* Set up android serial connection */
 
@@ -112,12 +114,14 @@ void app_main()
 	uart_pattern_queue_reset(ANDROID_PORT, 20);
 
 	//Create message queues
-	android_out_queue = xQueueCreate(10,sizeof(char)*15);
-	motor_in_queue = xQueueCreate(10,sizeof(char)*15);
-	lidar_in_queue = xQueueCreate(10,sizeof(char)*15);
+	//TODO: change this android out queue
+	android_out_queue = xQueueCreate(10,sizeof(output_info));
+	motor_in_queue = xQueueCreate(10,sizeof(char)*MESSAGE_LEN);
+	lidar_in_queue = xQueueCreate(10,sizeof(char)*MESSAGE_LEN);
 
     xTaskCreate(android_rx_main, "android_rx, interface", 4096, NULL, 1, NULL);
 	xTaskCreate(android_tx_main, "android_tx, interface", 1024, NULL, 1, NULL);
-	//xTaskCreate(lidar_main, "lidar_interface", 4096, NULL, 2, NULL);
-	xTaskCreate(motor_main, "motor_interface",8192, NULL,2, NULL);
+	xTaskCreate(lidar_main, "lidar_interface", 8192, NULL, 2, NULL);
+	//xTaskCreate(motor_main, "motor_interface",8192, NULL,2, NULL);
 }
+

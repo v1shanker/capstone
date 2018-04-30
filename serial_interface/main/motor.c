@@ -132,7 +132,7 @@ static void gpio_setup() {
 }
 
 void getMessage(){
-	char message[10];
+	char message[MESSAGE_LEN];
 	char *startMessage = "START";
 	char *stopMessage = "STOP";
 

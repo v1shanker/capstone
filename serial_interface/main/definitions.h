@@ -23,7 +23,7 @@
 #define SERIAL_RTS  (UART_PIN_NO_CHANGE)
 #define SERIAL_CTS  (UART_PIN_NO_CHANGE)
 
-#define RX_SIZE (2048)
+#define RX_SIZE (8192)
 #define TX_SIZE (256)
 
 #define HBRIDGE_LEFT_IN1   (GPIO_NUM_22)
@@ -35,6 +35,11 @@
 
 #define PATTERN_NUM 1
 
+#define MESSAGE_LEN 20
+#define OUTPUT_DATA_POINTS 6
+#define POINTS_PER_SECTION 20
+#define MAX_RETRY 5
+
 QueueHandle_t android_uart_queue;
 QueueHandle_t lidar_uart_queue;
 
@@ -44,6 +49,11 @@ QueueHandle_t android_out_queue;
 
 typedef enum pulse_state_definitions {PULSE_HIGH, PULSE_LOW} pulse_state;
 typedef enum direction_states {FORWARD, REVERSE} direction;
+
+typedef struct compact_lidar_data {
+	char data[(sizeof(float)*OUTPUT_DATA_POINTS)];
+	uint8_t size;
+} __attribute__((packed)) output_info;
 
 void lidar_main();
 void motor_main();
