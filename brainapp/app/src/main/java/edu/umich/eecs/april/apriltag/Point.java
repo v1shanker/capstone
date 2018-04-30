@@ -4,8 +4,8 @@ import java.util.Objects;
 
 public class Point {
 
-    private int x;
-    private int y;
+    private final int x;
+    private final int y;
 
     public Point(int x_c, int y_c) {
         x = x_c;
