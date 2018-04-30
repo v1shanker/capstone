@@ -12,11 +12,11 @@ public class Point {
         y = y_c;
     }
 
-    public int get_x_coor() {
+    public int getXCoord() {
         return x;
     }
 
-    public int get_y_coor() {
+    public int getYCoord() {
         return y;
     }
 
