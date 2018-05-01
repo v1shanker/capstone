@@ -261,7 +261,7 @@ JNIEXPORT jobject JNICALL Java_edu_umich_eecs_april_apriltag_ApriltagNative_apri
         (*env)->SetIntField(env, ad, state.ad_ncols_field, det->H->ncols);
 
         jdoubleArray matd_data = (*env)->GetObjectField(env, ad, state.ad_H_data_field);
-        (*env)->SetDoubleArrayRegion(env, matd_data, det->H->nrows, det->H->ncols, det->H->data);
+        (*env)->SetDoubleArrayRegion(env, matd_data, 0, 9, det->H->data);
 
         // al.add(ad);
         (*env)->CallBooleanMethod(env, al, state.al_add, ad);

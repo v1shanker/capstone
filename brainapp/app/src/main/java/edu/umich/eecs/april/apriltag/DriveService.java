@@ -37,25 +37,18 @@ public class DriveService extends Service {
             sb.append("AprilTags:\n");
             for (ApriltagDetection tag : tags) {
                 int id = tag.id;
-
-                int nrows = tag.nrows;
-                int ncols = tag.ncols;
-                double[] H = tag.H_data;
-
-                Pose p = Localization.getPoseFromHomography(nrows, ncols, H);
+                double[] p = tag.p;
 
                 if (p == null) {
                     sb.append("  No pose estimation possible from ");
                     sb.append(id);
                     sb.append('\n');
                 } else {
-                    sb.append("  Pose from ");
-                    sb.append(id);
-                    sb.append(":\n    ");
-                    sb.append(Arrays.toString(p.tVec));
-                    sb.append("\n    ");
-                    sb.append(Arrays.toString(p.rMat));
-                    sb.append('\n');
+                    sb.append("  ");
+                    sb.append(String.format("(%f,%f) ", p[0], p[1]));
+                    sb.append(String.format("(%f,%f) ", p[2], p[3]));
+                    sb.append(String.format("(%f,%f) ", p[4], p[5]));
+                    sb.append(String.format("(%f,%f) ", p[6], p[7]));
                 }
 
             }

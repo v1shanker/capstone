@@ -1,9 +1,8 @@
 package edu.umich.eecs.april.apriltag;
 
 class Pose {
-    public double[] tVec;
+    public double x;
+    public double y;
 
-    public int rRows;
-    public int rCols;
-    public double[] rMat;
+    public double theta;
 }
