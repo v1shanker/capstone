@@ -55,7 +55,6 @@ static void android_rx_main()
 					break;
 				default:
 					break;
-					//printf("Different event\n\n");
 			}
 		}
 
@@ -68,7 +67,15 @@ static void android_tx_main(){
 	
 	for (;;){
 		if (xQueueReceive(android_out_queue, (void *)(&temp),(portTickType)portMAX_DELAY)){
-				uart_write_bytes(ANDROID_PORT, temp.data,temp.size);
+			
+			/* Notify whether LIDAR or motor output */
+			if (temp.size == (sizeof(uint32_t) * OUTPUT_DATA_POINTS)){
+				uart_write_bytes(ANDROID_PORT, "L", 1);
+			} else {
+				uart_write_bytes(ANDROID_PORT, "M", 1);
+			}
+				
+			uart_write_bytes(ANDROID_PORT, temp.data,temp.size);
 		}
 	}
 }
@@ -94,7 +101,6 @@ void app_main()
     };
 
 	/* Set up lidar serial connection */
-
     uart_param_config(LIDAR_PORT, &uart_config1);
     uart_set_pin(LIDAR_PORT, LIDAR_TXD, LIDAR_RXD, SERIAL_RTS, SERIAL_CTS);
     uart_driver_install(LIDAR_PORT, RX_SIZE, TX_SIZE, 300, &lidar_uart_queue, 0);
@@ -105,7 +111,6 @@ void app_main()
     uart_pattern_queue_reset(LIDAR_PORT, 20);
 
 	/* Set up android serial connection */
-
 	uart_param_config(ANDROID_PORT, &uart_config2);
     uart_set_pin(ANDROID_PORT, PHONE_TXD, PHONE_RXD, SERIAL_RTS, SERIAL_CTS);
     uart_driver_install(ANDROID_PORT, RX_SIZE, TX_SIZE, 20, &android_uart_queue, 0);
@@ -113,15 +118,14 @@ void app_main()
 
 	uart_pattern_queue_reset(ANDROID_PORT, 20);
 
-	//Create message queues
-	//TODO: change this android out queue
+	/* Create message queues */
 	android_out_queue = xQueueCreate(10,sizeof(output_info));
 	motor_in_queue = xQueueCreate(10,sizeof(char)*MESSAGE_LEN);
 	lidar_in_queue = xQueueCreate(10,sizeof(char)*MESSAGE_LEN);
 
     xTaskCreate(android_rx_main, "android_rx, interface", 4096, NULL, 1, NULL);
 	xTaskCreate(android_tx_main, "android_tx, interface", 1024, NULL, 1, NULL);
-	xTaskCreate(lidar_main, "lidar_interface", 8192, NULL, 2, NULL);
-	//xTaskCreate(motor_main, "motor_interface",8192, NULL,2, NULL);
+	xTaskCreate(lidar_main, "lidar_interface", 8192, NULL, 1, NULL);
+	xTaskCreate(motor_main, "motor_interface",4096, NULL,1, NULL);
 }
 

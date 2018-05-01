@@ -51,7 +51,7 @@ typedef enum pulse_state_definitions {PULSE_HIGH, PULSE_LOW} pulse_state;
 typedef enum direction_states {FORWARD, REVERSE} direction;
 
 typedef struct compact_lidar_data {
-	char data[(sizeof(float)*OUTPUT_DATA_POINTS)];
+	char data[(sizeof(uint32_t)*OUTPUT_DATA_POINTS)];
 	uint8_t size;
 } __attribute__((packed)) output_info;
 
