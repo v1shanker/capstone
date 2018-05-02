@@ -31,30 +31,50 @@ class Localization {
         return offsetMeters * scalingFactor;
     }
 
-    // get translation and rotation of the robot relative to coordinate system induced by the tag
-    private Pose tagRelativePose(ApriltagDetection tag) {
+    private double normalizeAngle(double angle) {
+        while (angle >= Math.PI) {
+            angle -= 2 * Math.PI;
+        }
+        while (angle < -Math.PI) {
+            angle += 2 * Math.PI;
+        }
+        return angle;
+    }
+
+    // estimate position and orientation within the world based on observing this tag
+    private Pose getPoseFromTag(ApriltagDetection tag) {
 
         double tagCenterX = tag.c[0];
         double tagCenterY = tag.c[1];
 
-        // distance and angle from robot to tag
-        double tagOffsetX = tagCenterX - camCenterX;
-        double tagOffsetY = camCenterY - tagCenterY;
-        double radialDist = Math.sqrt(tagOffsetX * tagOffsetX + tagOffsetY * tagOffsetY);
-        double dist = scalePxToWorld(radialDist, 1.0);
-        double theta = Math.atan2(tagOffsetY, tagOffsetX); // radians ccw from right
+        // calculate vector RT (robot to tag) first in rectangular pixel-sized grid
+        double tagOffsetRight = tagCenterX - camCenterX; // right in image = right of robot
+        double tagOffsetFwd = camCenterY - tagCenterY; // up in image = forward of robot
 
-        // get tag's orientation
-        double tagVecLeft = tag.p[0] - tag.p[2];
-        double tagVecFwd = tag.p[1] - tag.p[3];
-        double phi = Math.atan2(tagVecLeft, tagVecFwd); // ccw from straight forward
+        // transform RT to polar meter-sized coordinate system
+        double tagHeight = 1.0; // TODO look this up based on records of tag's location
+        double radiusPx = Math.sqrt(tagOffsetRight * tagOffsetRight +
+                                    tagOffsetFwd * tagOffsetFwd);
+        double radiusRT = scalePxToWorld(radiusPx, tagHeight);
+        double thetaRT = Math.atan2(tagOffsetFwd, tagOffsetRight);
 
-        double angleFromTagToRobot = theta - phi + Math.PI;
+        // T hat is the tag's orientation within the robot-centric coordinate system
+        double thetaTHat = Math.atan2(tag.p[1] - tag.p[3], tag.p[2] - tag.p[0]);
+
+        // Differences in angles will be the same in robot-centric coords as in world coords
+        double theta = thetaTHat - thetaRT; // to convert RT to world rect coords
+        double robotAngleRelToTag = (Math.PI / 2.0) - thetaTHat;
+
+        // Reference for tag's position
+        // TODO actually look this up
+        double tagPosX = 0.0;
+        double tagPosY = 0.0;
+        double phi = 0.0;
 
         Pose res = new Pose();
-        res.x = dist * Math.cos(angleFromTagToRobot);
-        res.y = dist * Math.sin(angleFromTagToRobot);
-        res.theta = (Math.PI / 2) - phi;
+        res.x = tagPosX - radiusRT * Math.cos(phi - theta);
+        res.y = tagPosY - radiusRT * Math.sin(phi - theta);
+        res.theta = normalizeAngle(phi + robotAngleRelToTag);
 
         return res;
     }
@@ -63,7 +83,7 @@ class Localization {
         List<Pose> poses = new ArrayList<>();
 
         for (ApriltagDetection tag : tags) {
-            poses.add(tagRelativePose(tag));
+            poses.add(getPoseFromTag(tag));
         }
     }
 
