@@ -9,7 +9,7 @@ public class LocalizationMap {
 
     private static LocalizationMap sInstance = null;
     private static HashMap<Point, Integer> obstructions;
-    private static HashMap<Integer, Point> codeToPointMap;
+    private static HashMap<Integer, Pose> codeToPointMap;
 
 
     public static LocalizationMap getInstance() {
@@ -20,8 +20,8 @@ public class LocalizationMap {
     }
 
     /* This needs to be filled in once we have a map */
-    private HashMap<Integer, Point> getCodeToPointMap() {
-        return new HashMap<Integer, Point>();
+    private HashMap<Integer, Pose> getCodeToPointMap() {
+        return new HashMap<Integer, Pose>();
     }
 
     /* This needs to be filled in once we have a map */
@@ -42,7 +42,9 @@ public class LocalizationMap {
         obstructions.put(p, v);
     }
 
-    public Point getPointLocation(Integer i) {
+    public Pose getPointLocation(Integer i) {
         return codeToPointMap.getOrDefault(i, null);
     }
+
+    public void setPointLocation(Integer i, Pose p) { codeToPointMap.put(i, p); }
 }
