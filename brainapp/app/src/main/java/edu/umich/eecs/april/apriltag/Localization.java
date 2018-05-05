@@ -17,6 +17,8 @@ class Localization {
 
     private final static double PIXELS_PER_METER = SCREEN_DPI * INCHES_PER_METER;
 
+    private final static double CALIBRATION_FACTOR = 2.54;
+
     private double camCenterX;
     private double camCenterY;
 
@@ -28,7 +30,7 @@ class Localization {
     private double scalePxToWorld(double pxOffset, double heightMeters) {
         double scalingFactor = heightMeters / FOCAL_LENGTH_METERS;
         double offsetMeters = pxOffset / PIXELS_PER_METER;
-        return offsetMeters * scalingFactor;
+        return offsetMeters * scalingFactor / CALIBRATION_FACTOR;
     }
 
     private double normalizeAngle(double angle) {

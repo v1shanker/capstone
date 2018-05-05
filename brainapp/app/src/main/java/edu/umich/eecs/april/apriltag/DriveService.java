@@ -38,12 +38,9 @@ public class DriveService extends Service {
         List<ApriltagDetection> tags = mSystemState.getDetectedTagList();
         if (tags != null && !tags.isEmpty()) {
             for (ApriltagDetection tag : tags) {
-                Log.d(TAG, String.format("%d", tag.id));
                 Pose p = mLocalization.getPoseFromTag(tag);
 
-                if (tag.id == 0) {
-                    Log.d(TAG, String.format("p: (%f, %f), t: %f", p.x, p.y, p.theta));
-                }
+                Log.d(TAG, String.format("id: %d, p: (%f, %f), t: %f", tag.id, p.x, p.y, p.theta));
             }
         } else {
             Log.d(TAG, "No AprilTags in range!");
