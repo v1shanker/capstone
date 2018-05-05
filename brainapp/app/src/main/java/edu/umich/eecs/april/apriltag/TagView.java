@@ -456,4 +456,8 @@ public class TagView extends GLSurfaceView implements Camera.PreviewCallback {
         thread.parent = this;
         thread.run();
     }
+
+    public Camera.Size getmPreviewSize() {
+        return mPreviewSize;
+    }
 }

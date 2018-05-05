@@ -4,7 +4,6 @@ import static java.lang.Math.abs;
 import static java.lang.Math.atan;
 
 public class ApriltagDetection {
-
     // The decoded ID of the tag
     public int id;
 

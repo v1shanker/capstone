@@ -144,6 +144,14 @@ public class CameraActivity extends AppCompatActivity {
         }
 
         tagView.setCamera(camera);
+
+        Camera.Size cameraSize = tagView.getmPreviewSize();
+
+        // launch the drive service
+        Intent serviceLaunchIntent = new Intent(this, DriveService.class);
+        serviceLaunchIntent.putExtra(DriveService.WIDTH, cameraSize.width);
+        serviceLaunchIntent.putExtra(DriveService.HEIGHT, cameraSize.height);
+        startService(serviceLaunchIntent);
     }
 
     @Override
@@ -177,15 +185,6 @@ public class CameraActivity extends AppCompatActivity {
             default:
                 return super.onOptionsItemSelected(item);
         }
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-
-        // launch the drive service
-        Intent serviceLaunchIntent = new Intent(this, DriveService.class);
-        startService(serviceLaunchIntent);
     }
 
     @Override

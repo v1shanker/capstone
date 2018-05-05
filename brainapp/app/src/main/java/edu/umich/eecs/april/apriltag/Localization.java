@@ -10,9 +10,9 @@ import java.util.List;
 class Localization {
     private final static String TAG = "Localization";
 
-    private final static double FOCAL_LENGTH_METERS = 0.00338;
+    private final static double FOCAL_LENGTH_METERS = 0.028;
 
-    private final static double SCREEN_DPI=534.0; // change based on phone
+    private final static double SCREEN_DPI = 534.0; // change based on phone
     private final static double INCHES_PER_METER = 39.37;
 
     private final static double PIXELS_PER_METER = SCREEN_DPI * INCHES_PER_METER;
@@ -20,7 +20,7 @@ class Localization {
     private double camCenterX;
     private double camCenterY;
 
-    public Localization(int height, int width) {
+    public Localization(int width, int height) {
         camCenterX = width / 2.0;
         camCenterY = height / 2.0;
     }
@@ -42,24 +42,30 @@ class Localization {
     }
 
     // estimate position and orientation within the world based on observing this tag
-    private Pose getPoseFromTag(ApriltagDetection tag) {
-
+    public Pose getPoseFromTag(ApriltagDetection tag) {
         double tagCenterX = tag.c[0];
         double tagCenterY = tag.c[1];
 
         // calculate vector RT (robot to tag) first in rectangular pixel-sized grid
-        double tagOffsetRight = tagCenterX - camCenterX; // right in image = right of robot
-        double tagOffsetFwd = camCenterY - tagCenterY; // up in image = forward of robot
+        double tagOffsetFwd = camCenterX - tagCenterX; // lower x = forward
+        double tagOffsetRight = camCenterY - tagCenterY; // lower y = right
 
         // transform RT to polar meter-sized coordinate system
-        double tagHeight = 1.0; // TODO look this up based on records of tag's location
+        double tagHeight = 1.785; // TODO look this up based on records of tag's location
         double radiusPx = Math.sqrt(tagOffsetRight * tagOffsetRight +
                                     tagOffsetFwd * tagOffsetFwd);
         double radiusRT = scalePxToWorld(radiusPx, tagHeight);
         double thetaRT = Math.atan2(tagOffsetFwd, tagOffsetRight);
 
         // T hat is the tag's orientation within the robot-centric coordinate system
-        double thetaTHat = Math.atan2(tag.p[1] - tag.p[3], tag.p[2] - tag.p[0]);
+        // p lists points in the order bottom left, bottom right, top right, top left
+        double botLeftX = tag.p[0];
+        double botLeftY = tag.p[1];
+        double topLeftX = tag.p[6];
+        double topLeftY = tag.p[7];
+        double vecFwd = botLeftX - topLeftX;
+        double vecRight = botLeftY - topLeftY;
+        double thetaTHat = Math.atan2(vecFwd, vecRight);
 
         // Differences in angles will be the same in robot-centric coords as in world coords
         double theta = thetaTHat - thetaRT; // to convert RT to world rect coords

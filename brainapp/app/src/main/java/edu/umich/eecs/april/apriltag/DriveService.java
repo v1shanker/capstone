@@ -14,12 +14,16 @@ import java.util.List;
 import java.util.Locale;
 
 public class DriveService extends Service {
+    public static final String HEIGHT = "Height";
+    public static final String WIDTH = "Width";
+
     private static final String TAG = "DriveService";
     private static final long DELAY_MS = 1000;
     private Handler mHandler = null;
     private SystemState mSystemState = SystemState.getInstance();
     private BodyConnection mBodyConnection = BodyConnection.getInstance();
     private Context mContext = null;
+    private Localization mLocalization = null;
 
     private enum MotorState {
         STOP, FORWARD
@@ -33,26 +37,14 @@ public class DriveService extends Service {
     public void printTags() {
         List<ApriltagDetection> tags = mSystemState.getDetectedTagList();
         if (tags != null && !tags.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("AprilTags:\n");
             for (ApriltagDetection tag : tags) {
-                int id = tag.id;
-                double[] p = tag.p;
+                Log.d(TAG, String.format("%d", tag.id));
+                Pose p = mLocalization.getPoseFromTag(tag);
 
-                if (p == null) {
-                    sb.append("  No pose estimation possible from ");
-                    sb.append(id);
-                    sb.append('\n');
-                } else {
-                    sb.append("  ");
-                    sb.append(String.format("(%f,%f) ", p[0], p[1]));
-                    sb.append(String.format("(%f,%f) ", p[2], p[3]));
-                    sb.append(String.format("(%f,%f) ", p[4], p[5]));
-                    sb.append(String.format("(%f,%f) ", p[6], p[7]));
+                if (tag.id == 0) {
+                    Log.d(TAG, String.format("p: (%f, %f), t: %f", p.x, p.y, p.theta));
                 }
-
             }
-            Log.d(TAG, sb.toString());
         } else {
             Log.d(TAG, "No AprilTags in range!");
         }
@@ -85,6 +77,16 @@ public class DriveService extends Service {
 
     @Override
     public void onCreate() {
+
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        int width = intent.getIntExtra(WIDTH, 1920);
+        int height = intent.getIntExtra(HEIGHT, 1080);
+
+        mLocalization = new Localization(width, height);
+
         // Create separate thread, since service runs in foreground by default
         HandlerThread thread = new HandlerThread("DriveThread");
         thread.start();
@@ -97,6 +99,8 @@ public class DriveService extends Service {
 
         // start main loop
         mHandler.post(DriveUpdateRunnable);
+
+        return super.onStartCommand(intent, flags, startId);
     }
 
     @Override

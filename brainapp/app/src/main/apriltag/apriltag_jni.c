@@ -64,12 +64,12 @@ JNIEXPORT void JNICALL Java_edu_umich_eecs_april_apriltag_ApriltagNative_native_
         return;
     }
 
-    jclass matd_class = (*env)->FindClass(env, "edu/umich/eecs/april/apriltag/Matd");
-    if (!matd_class) {
-        __android_log_write(ANDROID_LOG_ERROR, "apriltag_jni",
-                            "couldn't find Matd class");
-        return;
-    }
+//    jclass matd_class = (*env)->FindClass(env, "edu/umich/eecs/april/apriltag/Matd");
+//    if (!matd_class) {
+//        __android_log_write(ANDROID_LOG_ERROR, "apriltag_jni",
+//                            "couldn't find Matd class");
+//        return;
+//    }
 
     state.ad_id_field = (*env)->GetFieldID(env, ad_cls, "id", "I");
     state.ad_hamming_field = (*env)->GetFieldID(env, ad_cls, "hamming", "I");
@@ -260,8 +260,8 @@ JNIEXPORT jobject JNICALL Java_edu_umich_eecs_april_apriltag_ApriltagNative_apri
         (*env)->SetIntField(env, ad ,state.ad_nrows_field, det->H->nrows);
         (*env)->SetIntField(env, ad, state.ad_ncols_field, det->H->ncols);
 
-        jdoubleArray matd_data = (*env)->GetObjectField(env, ad, state.ad_H_data_field);
-        (*env)->SetDoubleArrayRegion(env, matd_data, 0, 9, det->H->data);
+//        jdoubleArray matd_data = (*env)->GetObjectField(env, ad, state.ad_H_data_field);
+//        (*env)->SetDoubleArrayRegion(env, matd_data, 0, 9, det->H->data);
 
         // al.add(ad);
         (*env)->CallBooleanMethod(env, al, state.al_add, ad);
