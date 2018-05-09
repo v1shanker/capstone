@@ -24,7 +24,9 @@
 #define SERIAL_CTS  (UART_PIN_NO_CHANGE)
 
 #define RX_SIZE (8192)
-#define TX_SIZE (256)
+#define TX_SIZE (512)
+
+#define SET_BIT(n)                (1ULL << n)
 
 #define HBRIDGE_LEFT_IN1   (GPIO_NUM_22)
 #define HBRIDGE_LEFT_IN2   (GPIO_NUM_23)
@@ -32,6 +34,8 @@
 #define HBRIDGE_RIGHT_IN1   (GPIO_NUM_26)
 #define HBRIDGE_RIGHT_IN2   (GPIO_NUM_25)
 #define HBRIDGE_RIGHT_PWM   (GPIO_NUM_33)
+
+#define LIDAR_PWM (GPIO_NUM_14)
 
 #define PATTERN_NUM 1
 
@@ -51,8 +55,10 @@ typedef enum pulse_state_definitions {PULSE_HIGH, PULSE_LOW} pulse_state;
 typedef enum direction_states {FORWARD, REVERSE} direction;
 
 typedef struct compact_lidar_data {
-	char data[(sizeof(uint32_t)*OUTPUT_DATA_POINTS)];
+	uint32_t data[OUTPUT_DATA_POINTS];
 	uint8_t size;
+	char type;
+	char outcome;
 } __attribute__((packed)) output_info;
 
 void lidar_main();

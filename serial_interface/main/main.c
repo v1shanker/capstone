@@ -53,6 +53,10 @@ static void android_rx_main()
 						printf("My friend this could not have gone worse\n");
 					}
 					break;
+					
+				case UART_DATA:
+					break;
+					
 				default:
 					break;
 			}
@@ -65,20 +69,35 @@ static void android_rx_main()
 static void android_tx_main(){
 	output_info temp;
 	
+	char message[512];
+	char *error = "FAIL\n";
+	char *success = "ACK\n";
+	int len;
+	
 	for (;;){
 		if (xQueueReceive(android_out_queue, (void *)(&temp),(portTickType)portMAX_DELAY)){
+			uart_write_bytes(ANDROID_PORT, &temp.type, 1);
 			
-			/* Notify whether LIDAR or motor output */
-			if (temp.size == (sizeof(uint32_t) * OUTPUT_DATA_POINTS)){
-				uart_write_bytes(ANDROID_PORT, "L", 1);
+			if (temp.outcome == 0){
+				uart_write_bytes(ANDROID_PORT, error, 5);
 			} else {
-				uart_write_bytes(ANDROID_PORT, "M", 1);
+				if (temp.type == 'L'){
+					sprintf(message, "%u %u %u %u %u %u\n",
+								temp.data[0], temp.data[1], temp.data[2],
+								temp.data[3], temp.data[4], temp.data[5]);
+					len = strlen(message);
+					printf("Length is %d\n", len);
+					uart_write_bytes(ANDROID_PORT, message, len);
+				} else {
+					uart_write_bytes(ANDROID_PORT, success, 4);
+					//uart_write_bytes(ANDROID_PORT, &a,1);
+				}
 			}
-				
-			uart_write_bytes(ANDROID_PORT, temp.data,temp.size);
 		}
+		
+		printf("Sending out\n");
 	}
-}
+} 
 
 void app_main()
 {
@@ -103,7 +122,7 @@ void app_main()
 	/* Set up lidar serial connection */
     uart_param_config(LIDAR_PORT, &uart_config1);
     uart_set_pin(LIDAR_PORT, LIDAR_TXD, LIDAR_RXD, SERIAL_RTS, SERIAL_CTS);
-    uart_driver_install(LIDAR_PORT, RX_SIZE, TX_SIZE, 300, &lidar_uart_queue, 0);
+    uart_driver_install(LIDAR_PORT, RX_SIZE, TX_SIZE, 1000, &lidar_uart_queue, 0);
     uart_enable_pattern_det_intr(LIDAR_PORT, (char)0x81, PATTERN_NUM, 10000, 10, 10);
 	
 
@@ -113,19 +132,19 @@ void app_main()
 	/* Set up android serial connection */
 	uart_param_config(ANDROID_PORT, &uart_config2);
     uart_set_pin(ANDROID_PORT, PHONE_TXD, PHONE_RXD, SERIAL_RTS, SERIAL_CTS);
-    uart_driver_install(ANDROID_PORT, RX_SIZE, TX_SIZE, 20, &android_uart_queue, 0);
+    uart_driver_install(ANDROID_PORT, RX_SIZE, TX_SIZE, 1000, &android_uart_queue, 0);
     uart_enable_pattern_det_intr(ANDROID_PORT, '\n', PATTERN_NUM, 10000, 10, 10);
 
 	uart_pattern_queue_reset(ANDROID_PORT, 20);
 
 	/* Create message queues */
-	android_out_queue = xQueueCreate(10,sizeof(output_info));
-	motor_in_queue = xQueueCreate(10,sizeof(char)*MESSAGE_LEN);
-	lidar_in_queue = xQueueCreate(10,sizeof(char)*MESSAGE_LEN);
+	android_out_queue = xQueueCreate(20,sizeof(output_info));
+	motor_in_queue = xQueueCreate(20,sizeof(char)*MESSAGE_LEN);
+	lidar_in_queue = xQueueCreate(20,sizeof(char)*MESSAGE_LEN);
 
     xTaskCreate(android_rx_main, "android_rx, interface", 4096, NULL, 1, NULL);
-	xTaskCreate(android_tx_main, "android_tx, interface", 1024, NULL, 1, NULL);
-	xTaskCreate(lidar_main, "lidar_interface", 8192, NULL, 1, NULL);
+	xTaskCreate(android_tx_main, "android_tx, interface", 4096, NULL, 1, NULL);
+	//xTaskCreate(lidar_main, "lidar_interface", 8192, NULL, 1, NULL);
 	xTaskCreate(motor_main, "motor_interface",4096, NULL,1, NULL);
 }
 

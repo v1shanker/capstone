@@ -19,7 +19,7 @@
 #define TIMER_SCALE               (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
 #define DUTY_CYCLE_TICK           (TIMER_SCALE / 100 ) // this is 1 ms
 
-#define SET_BIT(n)                (1ULL << n)
+
 #define GPIO_PIN_BITMASK_LEFT     (SET_BIT(HBRIDGE_LEFT_IN1) | SET_BIT(HBRIDGE_LEFT_IN2) | SET_BIT(HBRIDGE_LEFT_PWM))
 #define GPIO_PIN_BITMASK_RIGHT    (SET_BIT(HBRIDGE_RIGHT_IN1) | SET_BIT(HBRIDGE_RIGHT_IN2) | SET_BIT(HBRIDGE_RIGHT_PWM))
 #define GPIO_PIN_BITMASK          GPIO_PIN_BITMASK_LEFT | GPIO_PIN_BITMASK_RIGHT
@@ -61,7 +61,7 @@ void IRAM_ATTR timer_isr(void *para) {
 }
 
 static void set_dir_left( direction dir ) {
-    if ( dir == FORWARD ) {
+    if ( dir == REVERSE ) {
         gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_HIGH);
         gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_LOW);
     } else { // forward
@@ -71,7 +71,7 @@ static void set_dir_left( direction dir ) {
 }
 
 static void set_dir_right( direction dir ) {
-    if ( dir == FORWARD ) {
+    if ( dir == REVERSE ) {
         gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_HIGH);
         gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_LOW);
     } else { // forward
@@ -133,24 +133,49 @@ static void gpio_setup() {
 
 void getMessage(){
 	char message[MESSAGE_LEN];
-	char *startMessage = "START";
-	char *stopMessage = "STOP";
+	output_info response;
+	int counter = 0;
 
 	for (;;){
 		if (xQueueReceive(motor_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){
 			if (!strcmp(message, "MFWD")){
 				printf("Starting motor\n");
-				set_speed_and_dir(30,FORWARD,FORWARD);
+				set_speed_and_dir(12,FORWARD,FORWARD);
+				
+				response.type = 'M';
+				response.outcome = 1;
 			}
 			else if (!strcmp(message, "MBACK")){
-				printf("Stopping motor\n");
-				set_speed_and_dir(30,REVERSE, REVERSE);
+				printf("Reversing motor\n");
+				set_speed_and_dir(12,REVERSE, REVERSE);
+				
+				response.type = 'M';
+				response.outcome = 1;
+				
 			} else if (!strcmp(message, "MSTOP")){
 				printf("Stopping motor\n");
 				set_speed_and_dir(0,FORWARD,FORWARD);
+				
+				response.type = 'M';
+				response.outcome = 1;
+				
 			} else {
-				printf("Unknown command");
+				printf("Unknown command\n");
+				response.type = 'M';
+				response.outcome = 0;
 			}
+			
+			/*
+			while (xQueueSend(android_out_queue, (void *)(&response), 1000/portTICK_PERIOD_MS)){
+				counter++;
+				if (counter > 5){
+					printf("Can't enque response!\n");
+					break;
+				}
+			} */
+			xQueueSend(android_out_queue, (void *)(&response), (portTickType)portMAX_DELAY);
+			printf("Sent!\n");
+		
 		}
 	}
 }
@@ -158,6 +183,6 @@ void getMessage(){
 void motor_main() {
     set_speed_and_dir(0, FORWARD, FORWARD);
     gpio_setup();
-    timer_pwm_interrupts_init();
+    //timer_pwm_interrupts_init();
 	getMessage();
 }
