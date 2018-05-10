@@ -10,26 +10,44 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.MenuInflater;
 import android.view.SurfaceView;
 import android.view.WindowManager;
-import android.widget.FrameLayout;
+
+import android.os.Build;
+import android.widget.FrameLayout.LayoutParams;
+import android.widget.RelativeLayout;
 
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
  * status bar and navigation/system bar) with user interaction.
  */
 public class CameraActivity extends AppCompatActivity {
-    private static final String TAG = "AprilTag";
-    private Camera camera;
-    private TagView tagView;
 
-    private static final int MY_PERMISSIONS_REQUEST_CAMERA = 77;
+    private static final String TAG = "AprilTag";
+    /**
+     * 'camera' is the object that references the hardware device
+     * installed on your Android phone.
+     */
+    private Camera camera;
+
+    /**
+     * Phone can have multiple cameras, so 'cameraID' is a
+     * useful variable to store which one of the camera is active.
+     * It starts with value -1
+     */
+    private int cameraID;
+
+    /**
+     * 'camPreview' is the object that prints the data
+     * coming from the active camera on the GUI, that is... frames!
+     * It's an instance of the 'CameraPreview' class, more information
+     * in {@link CameraPreview}
+     */
+    private CameraPreview camPreview;
+
     private int has_camera_permissions = 0;
+    private static final int MY_PERMISSIONS_REQUEST_CAMERA = 77;
 
     private void verifyPreferences() {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -61,16 +79,6 @@ public class CameraActivity extends AppCompatActivity {
 
         setContentView(R.layout.main);
 
-        SurfaceView overlayView = new SurfaceView(this);
-        tagView = new TagView(this, overlayView.getHolder());
-        FrameLayout layout = (FrameLayout) findViewById(R.id.tag_view);
-        //layout.addView(overlayView); // TODO: Not needed?
-        layout.addView(tagView);
-
-        // Add toolbar/actionbar
-        Toolbar myToolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(myToolbar);
-
         // Make the screen stay awake
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
@@ -78,75 +86,32 @@ public class CameraActivity extends AppCompatActivity {
     /** Release the camera when application focus is lost */
     protected void onPause() {
         super.onPause();
-        tagView.onPause();
-
-        //Log.i(TAG, "Pause");
-        // TODO move camera management to TagView class
-
-        if (camera != null) {
-            tagView.setCamera(null);
-            camera.release();
-            camera = null;
-        }
+        releaseCameraInstance();
     }
 
     /** (Re-)initialize the camera */
     protected void onResume() {
         super.onResume();
-        tagView.onResume();
-
-        if (this.has_camera_permissions == 0) {
-            return;
-        }
-
-        //Log.i(TAG, "Resume");
-
-        // Re-initialize the Apriltag detector as settings may have changed
-        verifyPreferences();
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        double decimation = Double.parseDouble(sharedPreferences.getString("decimation_list", "1"));
-        double sigma = Double.parseDouble(sharedPreferences.getString("sigma_value", "0"));
-        int nthreads = Integer.parseInt(sharedPreferences.getString("nthreads_value", "0"));
-        String tagFamily = sharedPreferences.getString("tag_family_list", "tag36h11");
-        boolean useRear = (sharedPreferences.getString("device_settings_camera_facing", "1").equals("1")) ? true : false;
-        Log.i(TAG, String.format("decimation: %f | sigma: %f | nthreads: %d | tagFamily: %s | useRear: %b",
-                decimation, sigma, nthreads, tagFamily, useRear));
-        ApriltagNative.apriltag_init(tagFamily, 2, decimation, sigma, nthreads);
-
-        // Find the camera index of front or rear camera
-        int camidx = 0;
-        Camera.CameraInfo info = new Camera.CameraInfo();
-        for (int i = 0; i < Camera.getNumberOfCameras(); i += 1) {
-            Camera.getCameraInfo(i, info);
-            int desiredFacing = useRear ? Camera.CameraInfo.CAMERA_FACING_BACK :
-                    Camera.CameraInfo.CAMERA_FACING_FRONT;
-            if (info.facing == desiredFacing) {
-                camidx = i;
-                break;
+        if (has_camera_permissions == 1 && setCameraInstance() == true) {
+            this.camPreview = new CameraPreview(this, this.camera, this.cameraID);
+            // if the preview is set, we add it to the contents of our activity.
+            RelativeLayout preview = (RelativeLayout) findViewById(R.id.preview_layout);
+            if (this.camPreview != null) {
+                preview.addView(this.camPreview);
             }
+
+            // also we set some layout properties
+            RelativeLayout.LayoutParams previewLayout = (RelativeLayout.LayoutParams) camPreview.getLayoutParams();
+            previewLayout.width = LayoutParams.MATCH_PARENT;
+            previewLayout.height = LayoutParams.MATCH_PARENT;
+            this.camPreview.setLayoutParams(previewLayout);
+        }
+        else {
+            Log.e(TAG, "onResume(): can't reconnect the camera");
+            this.finish();
         }
 
-        Camera.getCameraInfo(camidx, info);
-        Log.i(TAG, "using camera " + camidx);
-        Log.i(TAG, "camera rotation: " + info.orientation);
-
-        try {
-            camera = Camera.open(camidx);
-        } catch (Exception e) {
-            Log.d(TAG, "Couldn't open camera: " + e.getMessage());
-            return;
-        }
-
-        Log.i(TAG, "supported resolutions:");
-        Camera.Parameters params = camera.getParameters();
-        for (Camera.Size s : params.getSupportedPreviewSizes()) {
-            Log.i(TAG, " " + s.width + "x" + s.height);
-        }
-
-        tagView.setCamera(camera);
-
-        Camera.Size cameraSize = tagView.getmPreviewSize();
-
+        Camera.Size cameraSize = this.camera.getParameters().getPreviewSize();
         // launch the drive service
         Intent serviceLaunchIntent = new Intent(this, DriveService.class);
         serviceLaunchIntent.putExtra(DriveService.WIDTH, cameraSize.width);
@@ -154,38 +119,6 @@ public class CameraActivity extends AppCompatActivity {
         startService(serviceLaunchIntent);
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.main_menu, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-
-            case R.id.settings:
-                verifyPreferences();
-                Intent intent = new Intent();
-                intent.setClassName(this, "edu.umich.eecs.april.apriltag.SettingsActivity");
-                startActivity(intent);
-                return true;
-
-            case R.id.reset:
-                // Reset all shared preferences to default values
-                PreferenceManager.getDefaultSharedPreferences(this).edit().clear().commit();
-
-                // Restart the camera preview
-                onPause();
-                onResume();
-
-                return true;
-
-            default:
-                return super.onOptionsItemSelected(item);
-        }
-    }
 
     @Override
     protected void onStop() {
@@ -193,6 +126,113 @@ public class CameraActivity extends AppCompatActivity {
 
         Intent intent = new Intent(this, DriveService.class);
         stopService(intent);
+    }
+
+    /**
+     * [IMPORTANT!] The most important method of this Activity: it asks for an instance
+     * of the hardware camera(s) and save it to the private field {@link #camera}.
+     * @return TRUE if camera is set, FALSE if something bad happens
+     */
+    private boolean setCameraInstance() {
+        if (this.camera != null) {
+            // do the job only if the camera is not already set
+            Log.i(TAG, "setCameraInstance(): camera is already set, nothing to do");
+            return true;
+        }
+
+        // warning here! starting from API 9, we can retrieve one from the multiple
+        // hardware cameras (ex. front/back)
+        if (Build.VERSION.SDK_INT >= 9) {
+
+            if (this.cameraID < 0) {
+                // at this point, it's the first time we request for a camera
+                Camera.CameraInfo camInfo = new Camera.CameraInfo();
+                for (int i = 0; i < Camera.getNumberOfCameras(); i++) {
+                    Camera.getCameraInfo(i, camInfo);
+
+                    if (camInfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+                        // in this example we'll request specifically the back camera
+                        try {
+                            this.camera = Camera.open(i);
+                            this.cameraID = i; // assign to cameraID this camera's ID (O RLY?)
+                            return true;
+                        }
+                        catch (Exception e){
+                            // something bad happened! this camera could be locked by other apps
+                            Log.e(TAG, "setCameraInstance(): trying to open camera #" + i + " but it's locked", e);
+                            return false;
+                        }
+                    }
+                }
+            }
+            else {
+                // at this point, a previous camera was set, we try to re-instantiate it
+                try {
+                    this.camera = Camera.open(this.cameraID);
+                }
+                catch (Exception e){
+                    Log.e(TAG, "setCameraInstance(): trying to re-open camera #" + this.cameraID + " but it's locked", e);
+                    return false;
+                }
+            }
+        }
+
+        // we could reach this point in two cases:
+        // - the API is lower than 9
+        // - previous code block failed
+        // hence, we try the classic method, that doesn't ask for a particular camera
+        if (this.camera == null) {
+            try {
+                this.camera = Camera.open();
+                this.cameraID = 0;
+            }
+            catch (Exception e) {
+                // this is REALLY bad, the camera is definitely locked by the system.
+                Log.e(TAG,
+                        "setCameraInstance(): trying to open default camera but it's locked. "
+                                + "The camera is not available for this app at the moment.", e
+                );
+                return false;
+            }
+        }
+
+        // here, the open() went good and the camera is available
+        Log.i(TAG, "setCameraInstance(): successfully set camera #" + this.cameraID);
+        return true;
+    }
+
+    /**
+     * [IMPORTANT!] Another very important method: it releases all the resources and the locks
+     * we created while using the camera. It MUST be called everytime the app exits, crashes,
+     * is paused or whatever. The order of the called methods are the following: <br />
+     *
+     * 1) stop any preview coming to the GUI, if running <br />
+     * 2) call {@link Camera#release()} <br />
+     * 3) set our camera object to null and invalidate its ID
+     */
+    private void releaseCameraInstance() {
+        if (this.camera != null) {
+            try {
+                this.camera.stopPreview();
+            }
+            catch (Exception e) {
+                Log.i(TAG, "releaseCameraInstance(): tried to stop a non-existent preview, this is not an error");
+            }
+
+            this.camera.setPreviewCallback(null);
+            this.camera.release();
+            this.camera = null;
+            this.cameraID = -1;
+            Log.i(TAG, "releaseCameraInstance(): camera has been released.");
+        }
+    }
+
+    public Camera getCamera() {
+        return this.camera;
+    }
+
+    public int getCameraID() {
+        return this.cameraID;
     }
 
     @Override
@@ -204,14 +244,15 @@ public class CameraActivity extends AppCompatActivity {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Log.i(TAG, "App GRANTED camera permissions");
 
+                    RelativeLayout preview = (RelativeLayout) findViewById(R.id.preview_layout);
+                    if (this.camPreview != null) {
+                        preview.addView(this.camPreview);
+                    }
                     // Set flag
                     this.has_camera_permissions = 1;
 
                     // Restart the TagViewer
                     SurfaceView overlayView = new SurfaceView(this);
-                    tagView = new TagView(this, overlayView.getHolder());
-                    FrameLayout layout = (FrameLayout) findViewById(R.id.tag_view);
-                    layout.addView(tagView);
 
                     // Restart the camera
                     onPause();

@@ -11,7 +11,6 @@ public class LocalizationMap {
     private static HashMap<Point, Integer> obstructions;
     private static HashMap<Integer, Pose> codeToPointMap;
 
-
     public static LocalizationMap getInstance() {
         if (sInstance == null) {
             sInstance = new LocalizationMap();
