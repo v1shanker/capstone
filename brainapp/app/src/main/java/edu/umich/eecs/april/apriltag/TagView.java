@@ -7,14 +7,11 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-
-/**
- * Draws camera images onto a GLSurfaceView and tag mDetections onto a custom overlay surface.
- */
 public class TagView extends SurfaceView implements Camera.PreviewCallback {
     private static final String TAG = "AprilTag";
     private Camera mCamera;
@@ -22,14 +19,17 @@ public class TagView extends SurfaceView implements Camera.PreviewCallback {
     private ByteBuffer mYuvBuffer;
     private ArrayList<ApriltagDetection> mDetections;
     private SystemState systemState;
+    private SurfaceHolder surfaceHolder;
 
     public TagView(Context context, SurfaceHolder overlay) {
         super(context);
         overlay.setFormat(PixelFormat.TRANSPARENT);
+        this.surfaceHolder = overlay;
     }
 
     public void setCamera(Camera camera)
     {
+        Log.e(TAG, "1");
         if (camera == mCamera)
             return;
 
@@ -41,8 +41,11 @@ public class TagView extends SurfaceView implements Camera.PreviewCallback {
             } catch (Exception e) { }
         }
 
+        Log.e(TAG, "2");
+
         // Start the new mCamera preview
         if (camera != null) {
+            Log.e(TAG, "3");
             setHighestCameraPreviewResolution(camera);
 
             // Ensure space for frame (12 bits per pixel)
@@ -55,11 +58,19 @@ public class TagView extends SurfaceView implements Camera.PreviewCallback {
                 mYuvBuffer = ByteBuffer.allocateDirect(nbytes);
             }
 
+            Log.e(TAG, "4");
             camera.addCallbackBuffer(mYuvBuffer.array());
+            try {
+                camera.setPreviewDisplay(surfaceHolder);
+            } catch (IOException e) {
+                throw new RuntimeException("FAILURE");
+            }
+            Log.e(TAG, "5");
             camera.setPreviewCallbackWithBuffer(this);
             camera.startPreview();
             //Log.i(TAG, "Camera start");
         }
+        Log.e(TAG, "6");
         mCamera = camera;
     }
 
@@ -90,16 +101,17 @@ public class TagView extends SurfaceView implements Camera.PreviewCallback {
 
         public void run() {
             parent.mDetections = ApriltagNative.apriltag_detect_yuv(bytes, width, height);
+            Log.e(TAG, "C");
             parent.systemState.setDetectedTagList(parent.mDetections);
         }
     }
 
     public void onPreviewFrame(byte[] bytes, Camera camera) {
-
+        Log.e(TAG, "A");
         // Check if mCamera has been released in another thread
         if (this.mCamera == null)
             return;
-
+        Log.e(TAG, "B");
         // Spin up another thread so we don't block the UI thread
         ProcessingThread thread = new ProcessingThread();
         thread.bytes = bytes;
