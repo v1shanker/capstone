@@ -19,6 +19,10 @@ class Localization {
 
     private final static double CALIBRATION_FACTOR = 2.54;
 
+    private final static double CAMERA_HEIGHT_METERS = 0.224;
+    private final static double CAMERA_OFFSET_FORWARD_METERS = -0.0625;
+    private final static double CAMERA_OFFSET_RIGHT_METERS = 0.0185;
+
     private double camCenterX;
     private double camCenterY;
 
@@ -51,7 +55,7 @@ class Localization {
         Pose tagPose = mMap.getPointLocation(tag.id);
         if (tagPose == null) return null;
 
-        double tagHeight = 2.54; //2.45; //1.785;
+        double tagHeight = 2.54 - CAMERA_HEIGHT_METERS;
         double tagPosX = tagPose.x;
         double tagPosY = tagPose.y;
         double phi = tagPose.theta;
@@ -60,8 +64,9 @@ class Localization {
         double tagCenterY = tag.c[1];
 
         // calculate vector RT (robot to tag) first in rectangular pixel-sized grid
-        double tagOffsetFwd = camCenterX - tagCenterX; // lower x = forward
-        double tagOffsetRight = camCenterY - tagCenterY; // lower y = right
+        // lower x = forward, lower y = right
+        double tagOffsetFwd = camCenterX - tagCenterX + CAMERA_OFFSET_FORWARD_METERS;
+        double tagOffsetRight = camCenterY - tagCenterY + CAMERA_OFFSET_RIGHT_METERS;
 
         // transform RT to polar meter-sized coordinate system
         double radiusPx = Math.sqrt(tagOffsetRight * tagOffsetRight +
