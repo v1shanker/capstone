@@ -22,6 +22,8 @@ class Localization {
     private double camCenterX;
     private double camCenterY;
 
+    private LocalizationMap mMap = LocalizationMap.getInstance();
+
     public Localization(int width, int height) {
         camCenterX = width / 2.0;
         camCenterY = height / 2.0;
@@ -45,6 +47,15 @@ class Localization {
 
     // estimate position and orientation within the world based on observing this tag
     public Pose getPoseFromTag(ApriltagDetection tag) {
+        // Reference for tag's position
+        Pose tagPose = mMap.getPointLocation(tag.id);
+        if (tagPose == null) return null;
+
+        double tagHeight = 2.54; //2.45; //1.785;
+        double tagPosX = tagPose.x;
+        double tagPosY = tagPose.y;
+        double phi = tagPose.theta;
+
         double tagCenterX = tag.c[0];
         double tagCenterY = tag.c[1];
 
@@ -53,7 +64,6 @@ class Localization {
         double tagOffsetRight = camCenterY - tagCenterY; // lower y = right
 
         // transform RT to polar meter-sized coordinate system
-        double tagHeight = 1.785; // TODO look this up based on records of tag's location
         double radiusPx = Math.sqrt(tagOffsetRight * tagOffsetRight +
                                     tagOffsetFwd * tagOffsetFwd);
         double radiusRT = scalePxToWorld(radiusPx, tagHeight);
@@ -71,29 +81,12 @@ class Localization {
 
         // Differences in angles will be the same in robot-centric coords as in world coords
         double theta = thetaTHat - thetaRT; // to convert RT to world rect coords
-        double robotAngleRelToTag = (Math.PI / 2.0) - thetaTHat;
+        double robotAngleRelToTag = -(Math.PI / 2.0) - thetaTHat;
 
-        // Reference for tag's position
-        // TODO actually look this up
-        double tagPosX = 0.0;
-        double tagPosY = 0.0;
-        double phi = 0.0;
+        double x = tagPosX - radiusRT * Math.cos(phi - theta);
+        double y = tagPosY - radiusRT * Math.sin(phi - theta);
+        double thetaRes = normalizeAngle(phi + robotAngleRelToTag);
 
-        Pose res = new Pose();
-        res.x = tagPosX - radiusRT * Math.cos(phi - theta);
-        res.y = tagPosY - radiusRT * Math.sin(phi - theta);
-        res.theta = normalizeAngle(phi + robotAngleRelToTag);
-
-        return res;
+        return new Pose(x, y, thetaRes);
     }
-
-    public void update(List<ApriltagDetection> tags) {
-        List<Pose> poses = new ArrayList<>();
-
-        for (ApriltagDetection tag : tags) {
-            poses.add(getPoseFromTag(tag));
-        }
-    }
-
-
 }

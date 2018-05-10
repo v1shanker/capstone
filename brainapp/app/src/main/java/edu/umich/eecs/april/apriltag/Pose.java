@@ -5,4 +5,10 @@ class Pose {
     public double y;
 
     public double theta;
+
+    public Pose(double xArg, double yArg, double thetaArg) {
+        x = xArg;
+        y = yArg;
+        theta = thetaArg;
+    }
 }

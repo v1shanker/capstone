@@ -9,6 +9,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -24,14 +25,25 @@ public class DriveService extends Service {
     private BodyConnection mBodyConnection = BodyConnection.getInstance();
     private Context mContext = null;
     private Localization mLocalization = null;
+    private long frameCount = 0;
+
+    private double mPosX;
+    private double mPosY;
+    private double mTheta;
 
     private enum MotorState {
-        STOP, FORWARD
+        STOP, FORWARD, BACKWARD
     }
     private MotorState mMotorState;
 
     public void initDrive() {
         mContext = this;
+        mMotorState = MotorState.STOP;
+
+        LocalizationMap m = LocalizationMap.getInstance();
+//        m.setPointLocation(0, new Pose(0.0, 0.0, 0.0));
+//        m.setPointLocation(1, new Pose(0.6, 0.02, 0.02));
+        m.setPointLocation(2, new Pose(0.0, 0.0, 0.0));
     }
 
     public void printTags() {
@@ -39,6 +51,7 @@ public class DriveService extends Service {
         if (tags != null && !tags.isEmpty()) {
             for (ApriltagDetection tag : tags) {
                 Pose p = mLocalization.getPoseFromTag(tag);
+                if (p == null) continue;
 
                 Log.d(TAG, String.format("id: %d, p: (%f, %f), t: %f", tag.id, p.x, p.y, p.theta));
             }
@@ -47,10 +60,44 @@ public class DriveService extends Service {
         }
     }
 
-    public void readLidar() {}
+    public void readLidar() {
+        //mBodyConnection.send("LSCAN\n");
+    }
+
+    public void updateLocation() {
+        List<ApriltagDetection> tags = mSystemState.getDetectedTagList();
+        if (tags == null || tags.isEmpty()) { return; }
+        List<Pose> poseEstimations = new ArrayList<>();
+        for (ApriltagDetection tag : tags) {
+            poseEstimations.add(mLocalization.getPoseFromTag(tag));
+        }
+        double totalX = 0.0;
+        double totalY = 0.0;
+        for (Pose p : poseEstimations) {
+            totalX += p.x;
+            totalY += p.y;
+        }
+
+        mPosX = totalX / poseEstimations.size();
+        mPosY = totalY / poseEstimations.size();
+        mTheta = poseEstimations.get(0).theta;
+    }
 
     public void updateMotor() {
-
+        Log.d(TAG, String.format("%f", mPosX));
+        if (mPosX > 0.05) {
+            Log.d(TAG, "FORWARD");
+            mMotorState = MotorState.FORWARD;
+            mBodyConnection.send("MFWD\n");
+        } else if (mPosX < -0.05) {
+            Log.d(TAG, "BACK");
+            mMotorState = MotorState.BACKWARD;
+            mBodyConnection.send("MBACK\n");
+        } else if (-0.04 < mPosX && mPosX < 0.04) {
+            Log.d(TAG, "STOP");
+            mMotorState = MotorState.STOP;
+            mBodyConnection.send("MSTOP\n");
+        }
     }
 
     Runnable DriveUpdateRunnable = new Runnable() {
@@ -58,10 +105,13 @@ public class DriveService extends Service {
         public void run() {
             try {
                 // do work
+                frameCount++;
                 printTags();
                 if (mBodyConnection.isConnected()) {
-                    readLidar();
+                    //readLidar();
+                    updateLocation();
                     updateMotor();
+                    mBodyConnection.handleInput();
                 } else {
                     Log.d(TAG, "Attempting to connect");
                     mBodyConnection.connect(mContext);
