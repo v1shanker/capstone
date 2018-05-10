@@ -53,7 +53,10 @@ class Localization {
     public Pose getPoseFromTag(ApriltagDetection tag) {
         // Reference for tag's position
         Pose tagPose = mMap.getPointLocation(tag.id);
-        if (tagPose == null) return null;
+        if (tagPose == null) {
+            Log.d(TAG, "Unrecognized tag");
+            return null;
+        }
 
         double tagHeight = 2.54 - CAMERA_HEIGHT_METERS;
         double tagPosX = tagPose.x;

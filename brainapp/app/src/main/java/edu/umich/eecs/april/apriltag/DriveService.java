@@ -48,7 +48,8 @@ public class DriveService extends Service {
 
     public void printTags() {
         List<ApriltagDetection> tags = mSystemState.getDetectedTagList();
-        if (tags != null && !tags.isEmpty()) {
+        if (tags != null) {
+            Log.d(TAG, String.format("Detected %d tags.", tags.size()));
             for (ApriltagDetection tag : tags) {
                 Pose p = mLocalization.getPoseFromTag(tag);
                 if (p == null) continue;
@@ -85,15 +86,15 @@ public class DriveService extends Service {
 
     public void updateMotor() {
         Log.d(TAG, String.format("%f", mPosX));
-        if (mPosX > 0.05) {
+        if (mPosX > 0.05 && mMotorState != MotorState.FORWARD) {
             Log.d(TAG, "FORWARD");
             mMotorState = MotorState.FORWARD;
             mBodyConnection.send("MFWD\n");
-        } else if (mPosX < -0.05) {
+        } else if (mPosX < -0.05 && mMotorState != MotorState.BACKWARD) {
             Log.d(TAG, "BACK");
             mMotorState = MotorState.BACKWARD;
             mBodyConnection.send("MBACK\n");
-        } else if (-0.04 < mPosX && mPosX < 0.04) {
+        } else if (-0.04 < mPosX && mPosX < 0.04 && mMotorState != MotorState.STOP) {
             Log.d(TAG, "STOP");
             mMotorState = MotorState.STOP;
             mBodyConnection.send("MSTOP\n");

@@ -282,11 +282,11 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         camera.setPreviewCallbackWithBuffer(new PreviewCallback() {
             @Override
             public void onPreviewFrame(byte[] data, Camera cam) {
-                processFrame(previewBuffer, cam);
+                processFrame(data, cam);
 
                 // [IMPORTANT!] remember to reset the CallbackBuffer at the end of every onPreviewFrame event.
                 // Seems weird, but it works
-                cam.addCallbackBuffer(previewBuffer);
+//                cam.addCallbackBuffer(previewBuffer);
             }
         });
     }
