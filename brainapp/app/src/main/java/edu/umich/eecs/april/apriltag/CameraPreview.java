@@ -5,6 +5,7 @@ import java.util.List;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.PictureCallback;
@@ -282,7 +283,10 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         camera.setPreviewCallbackWithBuffer(new PreviewCallback() {
             @Override
             public void onPreviewFrame(byte[] data, Camera cam) {
-                processFrame(previewBuffer, cam);
+                Bitmap bitmapData = BitmapUtils.convertByteArrayToBitmap(data);
+                Bitmap mirroredBitmap = BitmapUtils.getMirroredImage(bitmapData);
+                byte[] mirroredByteArray = BitmapUtils.convertBitmapToByteArray(mirroredBitmap);
+                processFrame(mirroredByteArray, cam);
 
                 // [IMPORTANT!] remember to reset the CallbackBuffer at the end of every onPreviewFrame event.
                 // Seems weird, but it works
