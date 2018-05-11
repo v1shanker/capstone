@@ -114,8 +114,8 @@ public class CameraActivity extends AppCompatActivity {
         Camera.Size cameraSize = this.camera.getParameters().getPreviewSize();
         // launch the drive service
         Intent serviceLaunchIntent = new Intent(this, DriveService.class);
-        serviceLaunchIntent.putExtra(DriveService.WIDTH, cameraSize.width);
-        serviceLaunchIntent.putExtra(DriveService.HEIGHT, cameraSize.height);
+//        serviceLaunchIntent.putExtra(DriveService.WIDTH, cameraSize.width);
+//        serviceLaunchIntent.putExtra(DriveService.HEIGHT, cameraSize.height);
         startService(serviceLaunchIntent);
     }
 

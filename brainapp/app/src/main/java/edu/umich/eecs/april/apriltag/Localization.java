@@ -19,9 +19,9 @@ class Localization {
 
     private final static double CALIBRATION_FACTOR = 2.54;
 
-    private final static double CAMERA_HEIGHT_METERS = 0.224;
-    private final static double CAMERA_OFFSET_FORWARD_METERS = -0.0625;
-    private final static double CAMERA_OFFSET_RIGHT_METERS = 0.0185;
+    private final static double CAMERA_HEIGHT_METERS = 0.2;
+    private final static double CAMERA_OFFSET_FORWARD_METERS = -0.0285;
+    private final static double CAMERA_OFFSET_RIGHT_METERS = 0.062;
 
     private double camCenterX;
     private double camCenterY;
@@ -67,9 +67,9 @@ class Localization {
         double tagCenterY = tag.c[1];
 
         // calculate vector RT (robot to tag) first in rectangular pixel-sized grid
-        // lower x = forward, lower y = right
-        double tagOffsetFwd = camCenterX - tagCenterX + CAMERA_OFFSET_FORWARD_METERS;
-        double tagOffsetRight = camCenterY - tagCenterY + CAMERA_OFFSET_RIGHT_METERS;
+        // lower y = forward, lower x = right
+        double tagOffsetFwd = camCenterY - tagCenterY + CAMERA_OFFSET_FORWARD_METERS;
+        double tagOffsetRight = camCenterX - tagCenterX + CAMERA_OFFSET_RIGHT_METERS;
 
         // transform RT to polar meter-sized coordinate system
         double radiusPx = Math.sqrt(tagOffsetRight * tagOffsetRight +
@@ -83,8 +83,8 @@ class Localization {
         double botLeftY = tag.p[1];
         double topLeftX = tag.p[6];
         double topLeftY = tag.p[7];
-        double vecFwd = botLeftX - topLeftX;
-        double vecRight = botLeftY - topLeftY;
+        double vecFwd = botLeftY - topLeftY;
+        double vecRight = botLeftX - topLeftX;
         double thetaTHat = Math.atan2(vecFwd, vecRight);
 
         // Differences in angles will be the same in robot-centric coords as in world coords

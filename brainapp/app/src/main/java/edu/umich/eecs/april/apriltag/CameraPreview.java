@@ -1,11 +1,16 @@
 package edu.umich.eecs.april.apriltag;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.hardware.Camera.PictureCallback;
 import android.hardware.Camera.PreviewCallback;
@@ -68,7 +73,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     private SurfaceHolder surfaceHolder;
 
     private SystemState systemState;
-    private Camera.Size mPreviewSize;
 
     @SuppressWarnings("deprecation")
     public CameraPreview(Context context, Camera cam, int camID) {
@@ -78,7 +82,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         surfaceHolder.addCallback(this);
 
         systemState = SystemState.getInstance();
-        mPreviewSize = cam.getParameters().getPreviewSize();
 
         // deprecated setting, but required on Android versions prior to API 11
         if (Build.VERSION.SDK_INT < 11) {
@@ -279,14 +282,15 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         Camera camera = parent.getCamera();
 
         camera.addCallbackBuffer(this.previewBuffer);
+
         camera.setPreviewCallbackWithBuffer(new PreviewCallback() {
             @Override
             public void onPreviewFrame(byte[] data, Camera cam) {
-                processFrame(data, cam);
+                processFrame(data.clone(), cam);
 
                 // [IMPORTANT!] remember to reset the CallbackBuffer at the end of every onPreviewFrame event.
                 // Seems weird, but it works
-//                cam.addCallbackBuffer(previewBuffer);
+                cam.addCallbackBuffer(data);
             }
         });
     }
@@ -364,7 +368,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         CameraPreview parent;
 
         public void run() {
-            parent.systemState.setDetectedTagList(ApriltagNative.apriltag_detect_yuv(bytes, width, height));
+            parent.systemState.setDetectedTagList(ApriltagNative.apriltag_detect_yuv(bytes, 640, 320));
         }
     }
 
@@ -383,8 +387,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     private void processFrame(byte[] raw, Camera cam) {
         ProcessingThread thread = new ProcessingThread();
         thread.bytes = raw;
-        thread.width = mPreviewSize.width;
-        thread.height = mPreviewSize.height;
         thread.parent = this;
         thread.run();
     }

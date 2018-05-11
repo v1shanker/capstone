@@ -32,18 +32,19 @@ public class DriveService extends Service {
     private double mTheta;
 
     private enum MotorState {
-        STOP, FORWARD, BACKWARD
+        UNKNOWN, STOP, FORWARD, BACKWARD
     }
     private MotorState mMotorState;
 
     public void initDrive() {
         mContext = this;
-        mMotorState = MotorState.STOP;
+        mMotorState = MotorState.UNKNOWN;
 
         LocalizationMap m = LocalizationMap.getInstance();
-//        m.setPointLocation(0, new Pose(0.0, 0.0, 0.0));
-//        m.setPointLocation(1, new Pose(0.6, 0.02, 0.02));
-        m.setPointLocation(2, new Pose(0.0, 0.0, 0.0));
+        m.setPointLocation(1, new Pose(0.6, 0.02, 0.02));
+        m.setPointLocation(0, new Pose(0.0, 0.0, 0.0));
+//        m.setPointLocation(2, new Pose(0.0, 0.0, 0.0));
+        m.setPointLocation(4, new Pose(0.0, 0.0, 0.0));
     }
 
     public void printTags() {
@@ -70,7 +71,10 @@ public class DriveService extends Service {
         if (tags == null || tags.isEmpty()) { return; }
         List<Pose> poseEstimations = new ArrayList<>();
         for (ApriltagDetection tag : tags) {
-            poseEstimations.add(mLocalization.getPoseFromTag(tag));
+            Pose p = mLocalization.getPoseFromTag(tag);
+            if (p != null) {
+                poseEstimations.add(p);
+            }
         }
         double totalX = 0.0;
         double totalY = 0.0;
@@ -130,8 +134,8 @@ public class DriveService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        int width = intent.getIntExtra(WIDTH, 1920);
-        int height = intent.getIntExtra(HEIGHT, 1080);
+        int width = intent.getIntExtra(WIDTH, 640);
+        int height = intent.getIntExtra(HEIGHT, 480);
 
         mLocalization = new Localization(width, height);
 
