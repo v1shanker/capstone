@@ -17,7 +17,7 @@ public class DriveService extends Service {
     public static final String WIDTH = "Width";
 
     private static final String TAG = "DriveService";
-    private static final long DELAY_MS = 1000;
+    private static final long DELAY_MS = 250;
     private Handler mHandler = null;
     private SystemState mSystemState = SystemState.getInstance();
     private BodyConnection mBodyConnection = BodyConnection.getInstance();
@@ -25,10 +25,10 @@ public class DriveService extends Service {
 
     private long frameCount = 0;
 
-    private static final int STARTUP_COOLDOWN = 5;
-    private static final int TURN_COOLDOWN = 5;
+    private static final int STARTUP_COOLDOWN = 10;
+    private static final int TURN_COOLDOWN = 20;
 
-    private static double DISTANCE_THRESHOLD = 0.075;
+    private static double DISTANCE_THRESHOLD = 0.08;
     private static double ANGLE_THRESHOLD = Math.PI / 4.0;
 
     private Pose mPose;
@@ -55,16 +55,16 @@ public class DriveService extends Service {
         mMotorState = MotorState.UNKNOWN;
         mMotorCooldown = STARTUP_COOLDOWN;
 
-        mTarget = new Point(0, 0);
+        mTarget = new Point(Localization.worldToGrid(0.031), Localization.worldToGrid(-0.472));
         mNavigationPath = null;
 
         mMovementCommand = MovementCommand.NONE;
 
         LocalizationMap m = LocalizationMap.getInstance();
-        m.setPointLocation(1, new Pose(0.6, 0.02, 0.02));
         m.setPointLocation(0, new Pose(0.0, 0.0, 0.0));
-//        m.setPointLocation(2, new Pose(0.0, 0.0, 0.0));
-//        m.setPointLocation(4, new Pose(0.0, 0.0, 0.0));
+        m.setPointLocation(1, new Pose(0.61, 0.023, 0.02));
+        m.setPointLocation(5, new Pose(0.031, -0.472, -Math.PI+0.01));
+        m.setPointLocation(6, new Pose(0.63, -0.463, 0.0));
     }
 
     public void readLidar() {
@@ -82,7 +82,10 @@ public class DriveService extends Service {
             }
         }
 
-        if (poseEstimations.isEmpty()) { return; }
+        if (poseEstimations.isEmpty()) {
+            Log.d(TAG, "No tags to localize to");
+            return;
+        }
 
         double totalX = 0.0;
         double totalY = 0.0;
@@ -98,6 +101,8 @@ public class DriveService extends Service {
         mPose = new Pose(totalX / poseEstimations.size(),
                          totalY / poseEstimations.size(),
                          Math.atan2(totalSin, totalCos));
+
+        Log.d(TAG, String.format("Pose: %f, %f, %f", mPose.x, mPose.y, mPose.theta));
     }
 
     public void updateNavigation() {
@@ -111,6 +116,9 @@ public class DriveService extends Service {
             Log.i(TAG, "Navigation: Recalculating path");
             mNavigationPath = PathPlanning.findPath(mPoint, mTarget);
             mMovementCommand = MovementCommand.NONE;
+            Log.d(TAG, String.format("(%d, %d) -> (%d, %d)", mPoint.getXCoord(), mPoint.getYCoord(),
+                    mTarget.getXCoord(), mTarget.getYCoord()));
+            Log.d(TAG, mNavigationPath.toString());
         }
     }
 
@@ -135,7 +143,7 @@ public class DriveService extends Service {
     }
 
     public void updateMovementCommand() {
-        if (mPose == null || mNavigationPath == null) { return; }
+        if (mPose == null || mNavigationPath == null || mNavigationPath.isEmpty()) { return; }
 
         if (mMovementCommand == MovementCommand.NONE && mPoint != mTarget) {
             int i = mNavigationPath.indexOf(mPoint);
@@ -144,7 +152,7 @@ public class DriveService extends Service {
 
             // first check if a turn is needed
             double toGo = getAngle(mPoint, next);
-            if (angleDiff(toGo, mPose.theta) > ANGLE_THRESHOLD) {
+            if (Math.abs(angleDiff(toGo, mPose.theta)) > ANGLE_THRESHOLD) {
                 Log.i(TAG, String.format("MovementCommand: Turn from %f to %f", mPose.theta, toGo));
                 mMovementCommand = MovementCommand.TARGET_ANGLE;
                 mMovementCommandValue = toGo;
@@ -264,9 +272,9 @@ public class DriveService extends Service {
                 double targetTheta = mMovementCommandValue;
                 double deltaTheta = Localization.normalizeAngle(targetTheta - mPose.theta);
                 if (deltaTheta > ANGLE_THRESHOLD) {
-                    right();
-                } else if (deltaTheta < -ANGLE_THRESHOLD) {
                     left();
+                } else if (deltaTheta < -ANGLE_THRESHOLD) {
+                    right();
                 } else {
                     mMovementCommand = MovementCommand.NONE;
                 }
