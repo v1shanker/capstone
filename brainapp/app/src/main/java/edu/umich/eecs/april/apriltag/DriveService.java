@@ -26,6 +26,10 @@ public class DriveService extends Service {
     private Context mContext = null;
     private Localization mLocalization = null;
     private long frameCount = 0;
+    private int mCooldown;
+
+    private static final int STARTUP_COOLDOWN = 5;
+    private static final int TURN_COOLDOWN = 5;
 
     private double mPosX;
     private double mPosY;
@@ -39,6 +43,7 @@ public class DriveService extends Service {
     public void initDrive() {
         mContext = this;
         mMotorState = MotorState.UNKNOWN;
+        mCooldown = STARTUP_COOLDOWN;
 
         LocalizationMap m = LocalizationMap.getInstance();
         m.setPointLocation(1, new Pose(0.6, 0.02, 0.02));
@@ -103,20 +108,23 @@ public class DriveService extends Service {
 //            mMotorState = MotorState.STOP;
 //            mBodyConnection.send("MSTOP\n");
 //        }
+        if (mCooldown > 0) { return; }
         double targetTheta = Math.PI / 2.0;
-        double angleThreshold = Math.PI / 18.0;
+        double angleThreshold = Math.PI / 4.0;
         Log.d(TAG, String.format("Angle %f", mTheta));
         double angleDelta = Localization.normalizeAngle(targetTheta - mTheta);
 
-        if (angleDelta > angleThreshold && mMotorState != MotorState.LEFT) {
+        if (angleDelta > angleThreshold && mMotorState == MotorState.STOP) {
             Log.d(TAG, "LEFT");
             mMotorState = MotorState.LEFT;
+            mCooldown = TURN_COOLDOWN;
             mBodyConnection.send("MLEFT\n");
-        } else if (angleDelta < -angleThreshold && mMotorState != MotorState.RIGHT) {
+        } else if (angleDelta < -angleThreshold && mMotorState == MotorState.STOP) {
             Log.d(TAG, "RIGHT");
             mMotorState = MotorState.RIGHT;
+            mCooldown = TURN_COOLDOWN;
             mBodyConnection.send("MRIGHT\n");
-        } else if (-angleThreshold < angleDelta && angleDelta < angleThreshold && mMotorState != MotorState.STOP) {
+        } else if (mMotorState != MotorState.STOP) {
             Log.d(TAG, "STOP");
             mMotorState = MotorState.STOP;
             mBodyConnection.send("MSTOP\n");
@@ -129,6 +137,7 @@ public class DriveService extends Service {
             try {
                 // do work
                 frameCount++;
+                if (mCooldown > 0) { mCooldown--; }
                 printTags();
                 if (mBodyConnection.isConnected()) {
                     //readLidar();
