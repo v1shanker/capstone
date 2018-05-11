@@ -39,7 +39,7 @@ class Localization {
         return offsetMeters * scalingFactor / CALIBRATION_FACTOR;
     }
 
-    private double normalizeAngle(double angle) {
+    public static double normalizeAngle(double angle) {
         while (angle >= Math.PI) {
             angle -= 2 * Math.PI;
         }
@@ -89,7 +89,7 @@ class Localization {
 
         // Differences in angles will be the same in robot-centric coords as in world coords
         double theta = thetaTHat - thetaRT; // to convert RT to world rect coords
-        double robotAngleRelToTag = -(Math.PI / 2.0) - thetaTHat;
+        double robotAngleRelToTag = (Math.PI / 2) - thetaTHat;
 
         double x = tagPosX - radiusRT * Math.cos(phi - theta);
         double y = tagPosY - radiusRT * Math.sin(phi - theta);

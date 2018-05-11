@@ -32,7 +32,7 @@ public class DriveService extends Service {
     private double mTheta;
 
     private enum MotorState {
-        UNKNOWN, STOP, FORWARD, BACKWARD
+        UNKNOWN, STOP, FORWARD, BACKWARD, RIGHT, LEFT
     }
     private MotorState mMotorState;
 
@@ -44,7 +44,7 @@ public class DriveService extends Service {
         m.setPointLocation(1, new Pose(0.6, 0.02, 0.02));
         m.setPointLocation(0, new Pose(0.0, 0.0, 0.0));
 //        m.setPointLocation(2, new Pose(0.0, 0.0, 0.0));
-        m.setPointLocation(4, new Pose(0.0, 0.0, 0.0));
+//        m.setPointLocation(4, new Pose(0.0, 0.0, 0.0));
     }
 
     public void printTags() {
@@ -89,16 +89,34 @@ public class DriveService extends Service {
     }
 
     public void updateMotor() {
-        Log.d(TAG, String.format("%f", mPosX));
-        if (mPosX > 0.05 && mMotorState != MotorState.FORWARD) {
-            Log.d(TAG, "FORWARD");
-            mMotorState = MotorState.FORWARD;
-            mBodyConnection.send("MFWD\n");
-        } else if (mPosX < -0.05 && mMotorState != MotorState.BACKWARD) {
-            Log.d(TAG, "BACK");
-            mMotorState = MotorState.BACKWARD;
-            mBodyConnection.send("MBACK\n");
-        } else if (-0.04 < mPosX && mPosX < 0.04 && mMotorState != MotorState.STOP) {
+//        Log.d(TAG, String.format("%f", mPosX));
+//        if (mPosX > 0.05 && mMotorState != MotorState.FORWARD) {
+//            Log.d(TAG, "FORWARD");
+//            mMotorState = MotorState.FORWARD;
+//            mBodyConnection.send("MFWD\n");
+//        } else if (mPosX < -0.05 && mMotorState != MotorState.BACKWARD) {
+//            Log.d(TAG, "BACK");
+//            mMotorState = MotorState.BACKWARD;
+//            mBodyConnection.send("MBACK\n");
+//        } else if (-0.04 < mPosX && mPosX < 0.04 && mMotorState != MotorState.STOP) {
+//            Log.d(TAG, "STOP");
+//            mMotorState = MotorState.STOP;
+//            mBodyConnection.send("MSTOP\n");
+//        }
+        double targetTheta = Math.PI / 2.0;
+        double angleThreshold = Math.PI / 18.0;
+        Log.d(TAG, String.format("Angle %f", mTheta));
+        double angleDelta = Localization.normalizeAngle(targetTheta - mTheta);
+
+        if (angleDelta > angleThreshold && mMotorState != MotorState.LEFT) {
+            Log.d(TAG, "LEFT");
+            mMotorState = MotorState.LEFT;
+            mBodyConnection.send("MLEFT\n");
+        } else if (angleDelta < -angleThreshold && mMotorState != MotorState.RIGHT) {
+            Log.d(TAG, "RIGHT");
+            mMotorState = MotorState.RIGHT;
+            mBodyConnection.send("MRIGHT\n");
+        } else if (-angleThreshold < angleDelta && angleDelta < angleThreshold && mMotorState != MotorState.STOP) {
             Log.d(TAG, "STOP");
             mMotorState = MotorState.STOP;
             mBodyConnection.send("MSTOP\n");
