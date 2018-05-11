@@ -8,9 +8,16 @@
 */
 #include <stdio.h>
 #include <string.h>
+
+#include "driver/uart.h"
+#include "esp_intr.h"
+#include "esp_intr_alloc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "driver/uart.h"
+#include "soc/dport_reg.h"
+#include "soc/uart_struct.h"
+
+
 #include "esp_log.h"
 #include "definitions.h"
 
@@ -37,7 +44,7 @@ static void android_rx_main()
 					/* Remove pattern */
 					uart_read_bytes(ANDROID_PORT, pattern_dump, 1, 20/portTICK_RATE_MS);
 					pattern_dump[1] = '\0';
-					printf("Data buffer is %s\n", message);
+					printf("%s\n", message);
 
 					/* Send to motor */
 					if (message[0] == 'M'){
@@ -50,7 +57,7 @@ static void android_rx_main()
 					}
 
 					else {
-						printf("My friend this could not have gone worse\n");
+						printf("UnknownACommand\n");
 					}
 					break;
 					
@@ -86,16 +93,15 @@ static void android_tx_main(){
 								temp.data[0], temp.data[1], temp.data[2],
 								temp.data[3], temp.data[4], temp.data[5]);
 					len = strlen(message);
-					printf("Length is %d\n", len);
+					//printf("Length is %d\n", len);
 					uart_write_bytes(ANDROID_PORT, message, len);
 				} else {
 					uart_write_bytes(ANDROID_PORT, success, 4);
-					//uart_write_bytes(ANDROID_PORT, &a,1);
 				}
 			}
 		}
 		
-		printf("Sending out\n");
+		//printf("TXSent\n");
 	}
 } 
 
@@ -118,21 +124,32 @@ void app_main()
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
+	
+	uart_intr_config_t lidar_intr = {
+		.intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M,
+		.rxfifo_full_thresh = LIDAR_THRESHOLD,
+		.rx_timeout_thresh = UART_TOUT_THRESH_DEFAULT,
+		.txfifo_empty_intr_thresh = UART_EMPTY_THRESH_DEFAULT,
+	};
 
 	/* Set up lidar serial connection */
     uart_param_config(LIDAR_PORT, &uart_config1);
     uart_set_pin(LIDAR_PORT, LIDAR_TXD, LIDAR_RXD, SERIAL_RTS, SERIAL_CTS);
-    uart_driver_install(LIDAR_PORT, RX_SIZE, TX_SIZE, 1000, &lidar_uart_queue, 0);
+    uart_driver_install(LIDAR_PORT, L_RX_SIZE, L_TX_SIZE, 1000, &lidar_uart_queue, 0);
     uart_enable_pattern_det_intr(LIDAR_PORT, (char)0x81, PATTERN_NUM, 10000, 10, 10);
 	
-
+	/* Enable interrupts for LIDAR port */
+	//uart_intr_config(LIDAR_PORT, &lidar_intr);
+	//uart_enable_intr_mask(LIDAR_PORT, UART_RXFIFO_FULL_INT_ENA);
+	//uart_isr_register(LIDAR_PORT, lidar_uart_isr, 0, ESP_INTR_FLAG_IRAM, 0);
+	
     /* Reset the pattern queue length to record at most 20 pattern positions. */
     uart_pattern_queue_reset(LIDAR_PORT, 20);
 
 	/* Set up android serial connection */
 	uart_param_config(ANDROID_PORT, &uart_config2);
     uart_set_pin(ANDROID_PORT, PHONE_TXD, PHONE_RXD, SERIAL_RTS, SERIAL_CTS);
-    uart_driver_install(ANDROID_PORT, RX_SIZE, TX_SIZE, 1000, &android_uart_queue, 0);
+    uart_driver_install(ANDROID_PORT, A_RX_SIZE, A_TX_SIZE, 1000, &android_uart_queue, 0);
     uart_enable_pattern_det_intr(ANDROID_PORT, '\n', PATTERN_NUM, 10000, 10, 10);
 
 	uart_pattern_queue_reset(ANDROID_PORT, 20);
@@ -144,7 +161,7 @@ void app_main()
 
     xTaskCreate(android_rx_main, "android_rx, interface", 4096, NULL, 1, NULL);
 	xTaskCreate(android_tx_main, "android_tx, interface", 4096, NULL, 1, NULL);
-	//xTaskCreate(lidar_main, "lidar_interface", 8192, NULL, 1, NULL);
+	//xTaskCreate(lidar_main, "lidar_interface", 16000, NULL, 1, &lidar_handle);
 	xTaskCreate(motor_main, "motor_interface",4096, NULL,1, NULL);
 }
 

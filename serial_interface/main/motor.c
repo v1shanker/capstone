@@ -61,7 +61,7 @@ void IRAM_ATTR timer_isr(void *para) {
 }
 
 static void set_dir_left( direction dir ) {
-    if ( dir == REVERSE ) {
+    if ( dir == FORWARD ) {
         gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_HIGH);
         gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_LOW);
     } else { // forward
@@ -71,7 +71,7 @@ static void set_dir_left( direction dir ) {
 }
 
 static void set_dir_right( direction dir ) {
-    if ( dir == REVERSE ) {
+    if ( dir == FORWARD ) {
         gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_HIGH);
         gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_LOW);
     } else { // forward
@@ -139,21 +139,21 @@ void getMessage(){
 	for (;;){
 		if (xQueueReceive(motor_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){
 			if (!strcmp(message, "MFWD")){
-				printf("Starting motor\n");
+				//printf("Starting motor\n");
 				set_speed_and_dir(12,FORWARD,FORWARD);
 				
 				response.type = 'M';
 				response.outcome = 1;
 			}
 			else if (!strcmp(message, "MBACK")){
-				printf("Reversing motor\n");
+				//printf("Reversing motor\n");
 				set_speed_and_dir(12,REVERSE, REVERSE);
 				
 				response.type = 'M';
 				response.outcome = 1;
 				
 			} else if (!strcmp(message, "MSTOP")){
-				printf("Stopping motor\n");
+				//printf("Stopping motor\n");
 				set_speed_and_dir(0,FORWARD,FORWARD);
 				
 				response.type = 'M';
@@ -173,9 +173,11 @@ void getMessage(){
 					break;
 				}
 			} */
-			xQueueSend(android_out_queue, (void *)(&response), (portTickType)portMAX_DELAY);
-			printf("Sent!\n");
-		
+			if (!xQueueSend(android_out_queue, (void *)(&response), 2000/portTICK_PERIOD_MS)){
+				printf("Failed to enq\n");
+			} else {
+				printf("Msend\n");
+			}
 		}
 	}
 }
@@ -183,6 +185,6 @@ void getMessage(){
 void motor_main() {
     set_speed_and_dir(0, FORWARD, FORWARD);
     gpio_setup();
-    //timer_pwm_interrupts_init();
+    timer_pwm_interrupts_init();
 	getMessage();
 }

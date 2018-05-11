@@ -51,7 +51,7 @@ void getHeader(uint8_t *buffer, size_t bytes_required){
 					
 					/* Get actual data */
 					pos = uart_pattern_pop_pos(LIDAR_PORT);
-					printf("pos is %d\n",pos);
+					//printf("pos is %d\n",pos);
 					
 					if (pos == -1){
 						continue;
@@ -76,88 +76,92 @@ void lidar_sendBytes(char *buffer, size_t n){
 /*
  * @brief Send scan command to LIDAR and collects result
  */
-int lidarScan(rplidar_data *buffer){
+int lidarScan(rplidar_data *output){
 	//printf("Begin scan\n");
 	
 	char request[2] = {0xA5,0x20};
 	char stop[2] = {0xA5,0x25};
+	
+	uint8_t temp[3600];
 	uint8_t header[20];
+	
 	int count;
+	int index;
+	int startIndex;
 	size_t buffered_len;
-	size_t prev_len;
-	TickType_t start;
 
 	/* Stop any ongoing scan and flush RX FIFO queue */
 	lidar_sendBytes(stop,2);
 	uart_flush(LIDAR_PORT);
 	vTaskDelay(2/portTICK_PERIOD_MS);
 	lidar_sendBytes(request,2);
-	uart_enable_pattern_det_intr(LIDAR_PORT, (char)0x81, PATTERN_NUM, 10000, 10, 10);
-
-    /* Reset the pattern queue length to record at most 20 pattern positions. */
-    uart_pattern_queue_reset(LIDAR_PORT, 20);
 	
 	/* Get header info */
-	printf("Looking for data\n");
+	//printf("Looking for data\n");
 	getHeader(header,20);
-	uart_disable_pattern_det_intr(LIDAR_PORT);
-	printf("Got here\n");
-	start = xTaskGetTickCount();
-	while (1){
-		uart_get_buffered_data_len(LIDAR_PORT, &buffered_len);
-		printf("Length is %d\n", buffered_len);
-		if (buffered_len > 4000){
-			lidar_sendBytes(stop,2);
-			break;
-		}
-		
-		if ((xTaskGetTickCount() - start) > 2000/portTICK_PERIOD_MS){
-			printf("Timeout!\n");
-			return -1;
-		}
-		vTaskDelay(500/portTICK_PERIOD_MS);
-	} 
 	
-	printf("Done waiting\n");
-	/* Wait for LIDAR to stop sending */
-	/*prev_len = 0;
-	while (prev_len != buffered_len){
-		prev_len = buffered_len;
-		uart_get_buffered_data_len(LIDAR_PORT, &buffered_len);
-	}*/	
+	uart_read_bytes(LIDAR_PORT, temp, 3600, portMAX_DELAY);
+	lidar_sendBytes(stop,2);
 	
-	printf("Converged\n");
-	/* Ignore first set of data */
-	for (int i = 0; i < 2; i++){
-		buffer[0].sync_quality = 0;
-		while ((buffer[0].sync_quality & 0x3) != 0x1){
-			uart_read_bytes(LIDAR_PORT, (uint8_t *)&buffer[0], 5,20/portTICK_RATE_MS);
-		}
+	rplidar_data* buffer = (rplidar_data *)(temp);
+	
+	float angle_f;
+	float distance_f;
+	uint8_t quality;
+	uint8_t sync;
+	/*
+	for (int pos = 0; pos < 3600/5; pos++) {
+		sync = buffer[pos].sync_quality & 0x3;
+		quality = buffer[pos].sync_quality >> 2;
+		angle_f = (float)(buffer[pos].angle_checkbit >> 1)/(64.0f);
+		distance_f = (float)(buffer[pos].distance)/(4.0f);
+				
+		printf("theta: %03.2f Dist: %08.2f Q: %d S: %x\n", angle_f, distance_f, quality, sync);
+	}
+	*/
+	/* Avoid first syncbyte */
+	index = 0;
+	while ((buffer[index].sync_quality & 0x3) != 0x1){
+		index++;
+	}		
+	
+	/* Search for second sync byte */
+	index++;
+	while ((buffer[index].sync_quality & 0x3) != 0x1){
+		index++;
+	}
+	startIndex = index;
+	
+	/* Search for third sync byte */
+	index++;
+	while ((buffer[index].sync_quality & 0x3) != 0x1){
+		index++;
 	}
 	
-	uart_read_bytes(LIDAR_PORT, (uint8_t *)&buffer[0], 5,20/portTICK_RATE_MS);
-	count = 1;
-	do{
-		uart_read_bytes(LIDAR_PORT, (uint8_t *)&buffer[count], 5,20/portTICK_RATE_MS);
-		count++;
-	}
-	while ((buffer[count-1].sync_quality & 0x3) != 0x01);
+	//printf("Start is %d, end is %d\n",  startIndex, index);
+	
+	count = index - startIndex;
+	memcpy(output, &(buffer[startIndex]), count*5);
 	
 	/* Clear FIFO buffer */
 	uart_flush(LIDAR_PORT);
 	uart_pattern_queue_reset(LIDAR_PORT, 20);
 	xQueueReset(lidar_uart_queue);
-	/*
-	float angle_f;
-	float distance_f;
-	uint8_t quality;
-	uint8_t sync;
 	
+	uart_get_buffered_len(&buffered_len);
+	while (buffered_len != 0){
+		lidar_sendBytes(stop,2);
+		uart_flush(LIDAR_PORT);
+		vTaskDelay(2/portTICK_PERIOD_MS);
+		uart_get_buffered_len(&buffered_len);
+	}
+	
+	/*
 	for (int pos = 0; pos < count; pos++) {
-		sync = buffer[pos].sync_quality & 0x3;
-		quality = buffer[pos].sync_quality >> 2;
-		angle_f = (float)(buffer[pos].angle_checkbit >> 1)/(64.0f);
-		distance_f = (float)(buffer[pos].distance)/(4.0f);
+		sync = output[pos].sync_quality & 0x3;
+		quality = output[pos].sync_quality >> 2;
+		angle_f = (float)(output[pos].angle_checkbit >> 1)/(64.0f);
+		distance_f = (float)(output[pos].distance)/(40.0f);
 				
 		printf("theta: %03.2f Dist: %08.2f Q: %d S: %x\n", angle_f, distance_f, quality, sync);
 	}
@@ -168,39 +172,46 @@ int lidarScan(rplidar_data *buffer){
 
 void processData(rplidar_data *data, output_info *output,size_t count){
 	
-	float sum;
-	float average;
-	int point;
+	uint32_t sum;
+	uint32_t average;
+	uint32_t point;
+	uint32_t counter;
+	uint32_t distance;
 	
 	for (int i=0; i < OUTPUT_DATA_POINTS; i++){	
 		
 		sum = 0;
-		
+		counter = 0;
 		/* Left side of 0 */
 		if (i < 3){
 			for (point = 0; point < 20; point++){
-				sum += data[count - (3-i)*POINTS_PER_SECTION + point].distance;
+				distance = data[count - (3-i)*POINTS_PER_SECTION + point].distance;
+				if (distance > 0){
+					sum += distance;
+					counter++;
+				}
 			}
-			
-			average = sum/POINTS_PER_SECTION;
-			(output->data)[i] = (uint32_t)average;
 		}
 		
 		/* Right side of 0 */
 		else {
 			for (point=0; point < 20; point++){
-				sum += data[(i-3)*POINTS_PER_SECTION + point].distance;
+				distance = data[(i-3)*POINTS_PER_SECTION + point].distance;
+				if (distance > 0){
+					sum += distance;
+					counter++;
+				}
 			}
-			
-			average = sum/POINTS_PER_SECTION;
-			(output->data)[i] = (uint32_t)average;
 		}
+		
+		average = sum/counter;
+		(output->data)[i] = average;
 	}
-	
+	/*
 	for (int i=0; i < OUTPUT_DATA_POINTS; i++){
-		printf("Average value is %f\n", (float)((output->data)[i])/4.0f);
+		printf("Average value is %f\n", (float)((output->data)[i])/40.0f);
 	}
-	
+	*/
 	output -> size = OUTPUT_DATA_POINTS;
 	return;
 }
@@ -232,99 +243,27 @@ int doScan(output_info *output){
 	return 0;
 }
 
-void IRAM_ATTR lidar_isr(){
-
-	int next_interrupt_time = 0;
-	
-    if (lidar_state == OFF) {
-		next_interrupt_time = (SPEED) * DUTY_CYCLE_TICK;
-		gpio_set_level(LIDAR_PWM, ON);
-		lidar_state = ON;
-    } else if (lidar_state == ON) {
-		if (SPEED == PWM_PERIOD){
-			next_interrupt_time = (SPEED) * DUTY_CYCLE_TICK;
-		}
-		
-		else {
-			next_interrupt_time = (PWM_PERIOD - SPEED) * DUTY_CYCLE_TICK;
-			gpio_set_level(LIDAR_PWM, OFF);
-			lidar_state = OFF;
-		}
-    }
-	
-    // clear the interrupt
-    TIMERG1.int_clr_timers.t0 = 1;
-    timer_set_alarm_value(TIMER_GROUP_1, TIMER_0, next_interrupt_time);
-    // re-enable the alarm
-    TIMERG1.hw_timer[TIMER_0].config.alarm_en = TIMER_ALARM_EN;
-	
-}
-
-void pwm_setup(){
-	
-	/* Set up PWM pin */
-	gpio_config_t io_conf;
-	timer_config_t config;
-
-    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.pin_bit_mask = SET_BIT(LIDAR_PWM);
-    io_conf.pull_down_en = 0;
-    io_conf.pull_up_en = 0;
-    gpio_config(&io_conf);
-	
-    gpio_set_level(LIDAR_PWM, 1);
-	
-	/* Set up timer */
-    config.divider = TIMER_DIVIDER;
-    config.counter_dir = TIMER_COUNT_UP;
-    config.counter_en = TIMER_PAUSE;
-    config.alarm_en = TIMER_ALARM_EN;
-    config.intr_type = TIMER_INTR_LEVEL;
-    config.auto_reload = 0;
-    timer_init(TIMER_GROUP_1, TIMER_0, &config);
-
-    ESP_ERROR_CHECK(timer_set_counter_value(TIMER_GROUP_1, TIMER_0, 0x0ULL));
-
-    lidar_state = OFF;
-	
-    int next_interrupt_ms = (PWM_PERIOD - SPEED) * DUTY_CYCLE_TICK;
-	
-    ESP_ERROR_CHECK(timer_set_alarm_value(TIMER_GROUP_1, TIMER_0, next_interrupt_ms));
-    ESP_ERROR_CHECK(timer_enable_intr(TIMER_GROUP_1, TIMER_0));
-    ESP_ERROR_CHECK(timer_isr_register(TIMER_GROUP_1, TIMER_0, lidar_isr, NULL, ESP_INTR_FLAG_IRAM, NULL));
-    ESP_ERROR_CHECK(timer_start(TIMER_GROUP_1, TIMER_0));
-    return;
-
-}
-
 void lidar_main(){
 	output_info response;
 	char message[MESSAGE_LEN];
 	int result;
 	char stop[2] = {0xA5,0x25};
 	
-	pwm_setup();
-	
 	lidar_sendBytes(stop,2);
 	
-	/*
-	while (1){
-		printf("%d\n", test_counter);
-	}
-	*/
-	//doScan(&response);
-	//response.outcome = 1;
-	//response.type = 'L';
-	//xQueueSend(android_out_queue, (void *)(&response), (portTickType)portMAX_DELAY);
+	doScan(&response);
+	response.outcome = 1;
+	response.type = 'L';
 	
 	for (;;){
 		if (xQueueReceive(lidar_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){	
-			printf("LIDAR Task: Message from android: %s\n",message);
+			//printf("LIDAR Task: Message from android: %s\n",message);
 			if (!strcmp(message,"LSCAN")){
+				printf("Lsend\n");
 				xQueueSend(android_out_queue, (void *)(&response), (portTickType)portMAX_DELAY);
 				
 				result = doScan(&response);
+				
 				if (result == -1){
 					response.outcome = 0;
 				} else {
