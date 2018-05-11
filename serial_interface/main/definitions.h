@@ -51,6 +51,7 @@
 #define MAX_RETRY 5
 
 TaskHandle_t lidar_handle;
+TaskHandle_t motor_handle;
 
 QueueHandle_t android_uart_queue;
 QueueHandle_t lidar_uart_queue;
@@ -59,8 +60,9 @@ QueueHandle_t motor_in_queue;
 QueueHandle_t lidar_in_queue;
 QueueHandle_t android_out_queue;
 
-typedef enum pulse_state_definitions {PULSE_HIGH, PULSE_LOW} pulse_state;
-typedef enum direction_states {FORWARD, REVERSE} direction;
+typedef enum pulse_state_definitions {PULSE_HIGH, PULSE_LOW, TURNING_START, TURNING_STOP} pulse_state;
+typedef enum direction_states {FORWARD, REVERSE, TURN} direction;
+typedef enum turning_states {T_NONE,LEFT, RIGHT} turning_directions;
 
 typedef struct compact_lidar_data {
 	uint32_t data[OUTPUT_DATA_POINTS];

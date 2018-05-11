@@ -148,12 +148,12 @@ int lidarScan(rplidar_data *output){
 	uart_pattern_queue_reset(LIDAR_PORT, 20);
 	xQueueReset(lidar_uart_queue);
 	
-	uart_get_buffered_len(&buffered_len);
+	uart_get_buffered_data_len(LIDAR_PORT, &buffered_len);
 	while (buffered_len != 0){
 		lidar_sendBytes(stop,2);
 		uart_flush(LIDAR_PORT);
 		vTaskDelay(2/portTICK_PERIOD_MS);
-		uart_get_buffered_len(&buffered_len);
+		uart_get_buffered_data_len(LIDAR_PORT, &buffered_len);
 	}
 	
 	/*

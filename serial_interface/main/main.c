@@ -48,12 +48,18 @@ static void android_rx_main()
 
 					/* Send to motor */
 					if (message[0] == 'M'){
-						xQueueSend(motor_in_queue, (void *)(message), (portTickType)portMAX_DELAY);
+						if (!xQueueSend(motor_in_queue, (void *)(message), 2000/portTICK_RATE_MS)){
+							printf("Killing motor task\n");
+							vTaskDelete(motor_handle);
+							
+						}
 					}
 
 					/* Send to LIDAR */
 					else if (message[0] == 'L'){
 						xQueueSend(lidar_in_queue, (void *)(message), (portTickType)portMAX_DELAY);
+						xQueueReset(motor_in_queue);
+						xTaskCreate(motor_main, "motor_interface",4096, NULL,1, &motor_handle);
 					}
 
 					else {
@@ -162,6 +168,6 @@ void app_main()
     xTaskCreate(android_rx_main, "android_rx, interface", 4096, NULL, 1, NULL);
 	xTaskCreate(android_tx_main, "android_tx, interface", 4096, NULL, 1, NULL);
 	//xTaskCreate(lidar_main, "lidar_interface", 16000, NULL, 1, &lidar_handle);
-	xTaskCreate(motor_main, "motor_interface",4096, NULL,1, NULL);
+	xTaskCreate(motor_main, "motor_interface",4096, NULL,1, &motor_handle);
 }
 

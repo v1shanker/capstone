@@ -17,7 +17,7 @@
 
 #define TIMER_DIVIDER             16 // Hardware time clock divider
 #define TIMER_SCALE               (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
-#define DUTY_CYCLE_TICK           (TIMER_SCALE / 100 ) // this is 1 ms
+#define DUTY_CYCLE_TICK           (TIMER_SCALE / 1000 ) // this is 1 ms
 
 
 #define GPIO_PIN_BITMASK_LEFT     (SET_BIT(HBRIDGE_LEFT_IN1) | SET_BIT(HBRIDGE_LEFT_IN2) | SET_BIT(HBRIDGE_LEFT_PWM))
@@ -32,13 +32,37 @@
  *  positive is forward, negative is backwards
  *  should be between 0 and 100 (realisitically, 20 is more than enough) */
 static volatile uint8_t speed;
-static pulse_state pwm_pulse_state;
-
-
+static volatile pulse_state pwm_pulse_state;
+static turning_directions turn_dir;
 
 void IRAM_ATTR timer_isr(void *para) {
     int next_interrupt_time = 0;
-    if (pwm_pulse_state == PULSE_LOW) {
+	if (pwm_pulse_state == TURNING_START) {
+		pwm_pulse_state = TURNING_STOP;
+		next_interrupt_time = 500*DUTY_CYCLE_TICK;
+		if (turn_dir == RIGHT) {
+			gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_LOW);
+			gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_HIGH);
+			gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_HIGH);
+			gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_LOW);
+            gpio_set_level(HBRIDGE_LEFT_PWM, LOGIC_HIGH);
+            gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_HIGH);
+		} else if (turn_dir == LEFT) {
+			gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_HIGH);
+			gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_LOW);
+			gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_LOW);
+			gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_HIGH);
+            gpio_set_level(HBRIDGE_LEFT_PWM, LOGIC_HIGH);
+            gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_HIGH);
+		}
+	} else if (pwm_pulse_state == TURNING_STOP) {
+		pwm_pulse_state = PULSE_LOW;
+        gpio_set_level(HBRIDGE_LEFT_PWM, LOGIC_LOW);
+        gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_LOW);
+		speed = 0;
+		turn_dir = T_NONE;
+		next_interrupt_time = 100*DUTY_CYCLE_TICK;
+	} else if (pwm_pulse_state == PULSE_LOW) {
        if (speed > 0) {
             next_interrupt_time = speed * DUTY_CYCLE_TICK;
             pwm_pulse_state = PULSE_HIGH;
@@ -48,10 +72,14 @@ void IRAM_ATTR timer_isr(void *para) {
             next_interrupt_time = 100 * DUTY_CYCLE_TICK;
         }
     } else if (pwm_pulse_state == PULSE_HIGH) {
-        next_interrupt_time = (100 - speed) * DUTY_CYCLE_TICK;
-        pwm_pulse_state = PULSE_LOW;
-        gpio_set_level(HBRIDGE_LEFT_PWM, LOGIC_LOW);
-        gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_LOW);
+		if (speed < 100){
+			next_interrupt_time = (100 - speed) * DUTY_CYCLE_TICK;
+			pwm_pulse_state = PULSE_LOW;
+			gpio_set_level(HBRIDGE_LEFT_PWM, LOGIC_LOW);
+			gpio_set_level(HBRIDGE_RIGHT_PWM, LOGIC_LOW);
+		} else {
+			next_interrupt_time = 100* DUTY_CYCLE_TICK;
+		}
     }
     // clear the interrupt
     TIMERG0.int_clr_timers.t0 = 1;
@@ -64,20 +92,26 @@ static void set_dir_left( direction dir ) {
     if ( dir == FORWARD ) {
         gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_HIGH);
         gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_LOW);
-    } else { // forward
+    } else if ( dir == REVERSE ) { // forward
         gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_LOW);
         gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_HIGH);
-    }
+    } else {
+        gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_LOW);
+        gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_LOW);
+	}
 }
 
 static void set_dir_right( direction dir ) {
     if ( dir == FORWARD ) {
         gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_HIGH);
         gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_LOW);
-    } else { // forward
+    } else if ( dir == REVERSE){ // forward
         gpio_set_level(HBRIDGE_RIGHT_IN1, LOGIC_LOW);
         gpio_set_level(HBRIDGE_RIGHT_IN2, LOGIC_HIGH);
-    }
+    } else {
+        gpio_set_level(HBRIDGE_LEFT_IN1, LOGIC_LOW);
+        gpio_set_level(HBRIDGE_LEFT_IN2, LOGIC_LOW);
+	}
 }
 
 // only expose this as the public interface because the user
@@ -87,6 +121,15 @@ void set_speed_and_dir(uint8_t new_speed, direction dir_right, direction dir_lef
     speed = new_speed;
     set_dir_left(dir_left);
     set_dir_right(dir_right);
+}
+
+void turn(turning_directions td) {
+	printf("Called turn.\n");
+	speed = 0;
+	set_dir_left(TURN);
+	set_dir_right(TURN);
+	turn_dir = td;
+	pwm_pulse_state = TURNING_START;
 }
 
 static void timer_pwm_interrupts_init() {
@@ -136,6 +179,7 @@ void getMessage(){
 	output_info response;
 	int counter = 0;
 
+	//turn(RIGHT);
 	for (;;){
 		if (xQueueReceive(motor_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){
 			if (!strcmp(message, "MFWD")){
@@ -159,6 +203,22 @@ void getMessage(){
 				response.type = 'M';
 				response.outcome = 1;
 				
+			} else if (!strcmp(message, "MRIGHT")){
+				printf("TUrn right\n");
+				turn(RIGHT);
+				while (pwm_pulse_state != PULSE_LOW);
+				set_speed_and_dir(0, FORWARD, FORWARD);
+				response.type = 'M';
+				response.outcome = 1;
+				
+			} else if (!strcmp(message, "MLEFT")){
+				printf("Turn left\n");
+				turn(LEFT);
+				while (pwm_pulse_state != PULSE_LOW);
+				set_speed_and_dir(0, FORWARD, FORWARD);
+
+				response.type = 'M';
+				response.outcome = 1;
 			} else {
 				printf("Unknown command\n");
 				response.type = 'M';
@@ -184,6 +244,7 @@ void getMessage(){
 
 void motor_main() {
     set_speed_and_dir(0, FORWARD, FORWARD);
+	turn_dir = T_NONE;
     gpio_setup();
     timer_pwm_interrupts_init();
 	getMessage();
