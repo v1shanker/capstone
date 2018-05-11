@@ -23,6 +23,8 @@ class Localization {
     private final static double CAMERA_OFFSET_FORWARD_METERS = -0.0285;
     private final static double CAMERA_OFFSET_RIGHT_METERS = 0.062;
 
+    private final static double GRID_SCALE_METERS = 0.10;
+
     private double camCenterX;
     private double camCenterY;
 
@@ -96,5 +98,13 @@ class Localization {
         double thetaRes = normalizeAngle(phi + robotAngleRelToTag);
 
         return new Pose(x, y, thetaRes);
+    }
+
+    static double gridToWorld(int i) {
+        return i * GRID_SCALE_METERS;
+    }
+
+    static int worldToGrid(double i) {
+        return (int)Math.round(i / GRID_SCALE_METERS);
     }
 }

@@ -10,9 +10,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
 public class DriveService extends Service {
     public static final String HEIGHT = "Height";
@@ -23,48 +21,50 @@ public class DriveService extends Service {
     private Handler mHandler = null;
     private SystemState mSystemState = SystemState.getInstance();
     private BodyConnection mBodyConnection = BodyConnection.getInstance();
-    private Context mContext = null;
     private Localization mLocalization = null;
+
     private long frameCount = 0;
-    private int mCooldown;
 
     private static final int STARTUP_COOLDOWN = 5;
     private static final int TURN_COOLDOWN = 5;
 
-    private double mPosX;
-    private double mPosY;
-    private double mTheta;
+    private static double DISTANCE_THRESHOLD = 0.075;
+    private static double ANGLE_THRESHOLD = Math.PI / 4.0;
+
+    private Pose mPose;
+
+    private Point mPoint;
+    private Point mTarget;
+    private List<Point> mNavigationPath;
+
+    private enum MovementCommand {
+        NONE, TARGET_X, TARGET_Y, TARGET_ANGLE
+    }
+    private MovementCommand mMovementCommand;
+    private double mMovementCommandValue;
 
     private enum MotorState {
         UNKNOWN, STOP, FORWARD, BACKWARD, RIGHT, LEFT
     }
     private MotorState mMotorState;
+    private int mMotorCooldown;
 
     public void initDrive() {
-        mContext = this;
+        mPose = null;
+
         mMotorState = MotorState.UNKNOWN;
-        mCooldown = STARTUP_COOLDOWN;
+        mMotorCooldown = STARTUP_COOLDOWN;
+
+        mTarget = new Point(0, 0);
+        mNavigationPath = null;
+
+        mMovementCommand = MovementCommand.NONE;
 
         LocalizationMap m = LocalizationMap.getInstance();
         m.setPointLocation(1, new Pose(0.6, 0.02, 0.02));
         m.setPointLocation(0, new Pose(0.0, 0.0, 0.0));
 //        m.setPointLocation(2, new Pose(0.0, 0.0, 0.0));
 //        m.setPointLocation(4, new Pose(0.0, 0.0, 0.0));
-    }
-
-    public void printTags() {
-        List<ApriltagDetection> tags = mSystemState.getDetectedTagList();
-        if (tags != null) {
-            Log.d(TAG, String.format("Detected %d tags.", tags.size()));
-            for (ApriltagDetection tag : tags) {
-                Pose p = mLocalization.getPoseFromTag(tag);
-                if (p == null) continue;
-
-                Log.d(TAG, String.format("id: %d, p: (%f, %f), t: %f", tag.id, p.x, p.y, p.theta));
-            }
-        } else {
-            Log.d(TAG, "No AprilTags in range!");
-        }
     }
 
     public void readLidar() {
@@ -81,54 +81,198 @@ public class DriveService extends Service {
                 poseEstimations.add(p);
             }
         }
+
+        if (poseEstimations.isEmpty()) { return; }
+
         double totalX = 0.0;
         double totalY = 0.0;
+        double totalSin = 0.0;
+        double totalCos = 0.0;
         for (Pose p : poseEstimations) {
             totalX += p.x;
             totalY += p.y;
+            totalSin += Math.sin(p.theta);
+            totalCos += Math.cos(p.theta);
         }
 
-        mPosX = totalX / poseEstimations.size();
-        mPosY = totalY / poseEstimations.size();
-        mTheta = poseEstimations.get(0).theta;
+        mPose = new Pose(totalX / poseEstimations.size(),
+                         totalY / poseEstimations.size(),
+                         Math.atan2(totalSin, totalCos));
+    }
+
+    public void updateNavigation() {
+        if (mPose == null) { return; }
+
+        int x = Localization.worldToGrid(mPose.x);
+        int y = Localization.worldToGrid(mPose.y);
+        mPoint = new Point(x, y);
+
+        if (mNavigationPath == null || !mNavigationPath.contains(mPoint)) {
+            Log.i(TAG, "Navigation: Recalculating path");
+            mNavigationPath = PathPlanning.findPath(mPoint, mTarget);
+            mMovementCommand = MovementCommand.NONE;
+        }
+    }
+
+    private double getAngle(Point from, Point to) {
+        if (from.getXCoord() != to.getXCoord()) {
+            if (from.getXCoord() > to.getXCoord()) {
+                return -Math.PI;
+            } else {
+                return 0.0;
+            }
+        } else {
+            if (from.getYCoord() > to.getYCoord()) {
+                return -(Math.PI / 2.0);
+            } else {
+                return Math.PI / 2.0;
+            }
+        }
+    }
+
+    private double angleDiff(double x, double y) {
+        return Localization.normalizeAngle(x - y);
+    }
+
+    public void updateMovementCommand() {
+        if (mPose == null || mNavigationPath == null) { return; }
+
+        if (mMovementCommand == MovementCommand.NONE && mPoint != mTarget) {
+            int i = mNavigationPath.indexOf(mPoint);
+            int j = i+1;
+            Point next = mNavigationPath.get(j);
+
+            // first check if a turn is needed
+            double toGo = getAngle(mPoint, next);
+            if (angleDiff(toGo, mPose.theta) > ANGLE_THRESHOLD) {
+                Log.i(TAG, String.format("MovementCommand: Turn from %f to %f", mPose.theta, toGo));
+                mMovementCommand = MovementCommand.TARGET_ANGLE;
+                mMovementCommandValue = toGo;
+                return;
+            }
+
+            if (mPoint.getXCoord() == next.getXCoord()) {
+                // keep increasing index as long as x coord doesn't change
+                int targetIndex = j;
+                while (targetIndex < mNavigationPath.size() - 1 &&
+                        mPoint.getXCoord() == mNavigationPath.get(targetIndex + 1).getXCoord()) {
+                    targetIndex++;
+                }
+                int targetY = mNavigationPath.get(targetIndex).getYCoord();
+                Log.i(TAG, String.format("MovementCommand: Go from y=%d to y=%d",
+                        mPoint.getYCoord(), targetY));
+                mMovementCommand = MovementCommand.TARGET_Y;
+                mMovementCommandValue = Localization.gridToWorld(targetY);
+            } else {
+                // keep increasing index as long as y coord doesn't change
+                int targetIndex = j;
+                while (targetIndex < mNavigationPath.size() - 1 &&
+                        mPoint.getYCoord() == mNavigationPath.get(targetIndex + 1).getYCoord()) {
+                    targetIndex++;
+                }
+                int targetX = mNavigationPath.get(targetIndex).getXCoord();
+                Log.i(TAG, String.format("MovementCommand: Go from x=%d to x=%d",
+                        mPoint.getXCoord(), targetX));
+                mMovementCommand = MovementCommand.TARGET_X;
+                mMovementCommandValue = Localization.gridToWorld(targetX);
+            }
+        }
+    }
+
+    private void stop() {
+        if (mMotorState == MotorState.STOP) { return; }
+        Log.d(TAG, "Motor: Stop");
+        mMotorState = MotorState.STOP;
+        mBodyConnection.send("MSTOP\n");
+    }
+
+    private void forward() {
+        if (mMotorState == MotorState.FORWARD) { return; }
+        Log.d(TAG, "Motor: Forward");
+        mMotorState = MotorState.FORWARD;
+        mBodyConnection.send("MFWD\n");
+    }
+
+    private void backward() {
+        if (mMotorState == MotorState.BACKWARD) { return; }
+        Log.d(TAG, "Motor: Backward");
+        mMotorState = MotorState.BACKWARD;
+        mBodyConnection.send("MBACK\n");
+    }
+
+    private void right() {
+        if (mMotorState == MotorState.RIGHT) { return; }
+        if (mMotorState != MotorState.STOP) {
+            stop();
+        }
+        Log.d(TAG, "Motor: Right");
+        mMotorState = MotorState.RIGHT;
+        mBodyConnection.send("MRIGHT\n");
+        mMotorCooldown = TURN_COOLDOWN;
+    }
+
+    private void left() {
+        if (mMotorState == MotorState.LEFT) { return; }
+        if (mMotorState != MotorState.STOP) {
+            stop();
+        }
+        Log.d(TAG, "Motor: Left");
+        mMotorState = MotorState.LEFT;
+        mBodyConnection.send("MLEFT\n");
+        mMotorCooldown = TURN_COOLDOWN;
     }
 
     public void updateMotor() {
-//        Log.d(TAG, String.format("%f", mPosX));
-//        if (mPosX > 0.05 && mMotorState != MotorState.FORWARD) {
-//            Log.d(TAG, "FORWARD");
-//            mMotorState = MotorState.FORWARD;
-//            mBodyConnection.send("MFWD\n");
-//        } else if (mPosX < -0.05 && mMotorState != MotorState.BACKWARD) {
-//            Log.d(TAG, "BACK");
-//            mMotorState = MotorState.BACKWARD;
-//            mBodyConnection.send("MBACK\n");
-//        } else if (-0.04 < mPosX && mPosX < 0.04 && mMotorState != MotorState.STOP) {
-//            Log.d(TAG, "STOP");
-//            mMotorState = MotorState.STOP;
-//            mBodyConnection.send("MSTOP\n");
-//        }
-        if (mCooldown > 0) { return; }
-        double targetTheta = Math.PI / 2.0;
-        double angleThreshold = Math.PI / 4.0;
-        Log.d(TAG, String.format("Angle %f", mTheta));
-        double angleDelta = Localization.normalizeAngle(targetTheta - mTheta);
+        if (mPose == null || mNavigationPath == null || mMotorCooldown > 0) { return; }
 
-        if (angleDelta > angleThreshold && mMotorState == MotorState.STOP) {
-            Log.d(TAG, "LEFT");
-            mMotorState = MotorState.LEFT;
-            mCooldown = TURN_COOLDOWN;
-            mBodyConnection.send("MLEFT\n");
-        } else if (angleDelta < -angleThreshold && mMotorState == MotorState.STOP) {
-            Log.d(TAG, "RIGHT");
-            mMotorState = MotorState.RIGHT;
-            mCooldown = TURN_COOLDOWN;
-            mBodyConnection.send("MRIGHT\n");
-        } else if (mMotorState != MotorState.STOP) {
-            Log.d(TAG, "STOP");
-            mMotorState = MotorState.STOP;
-            mBodyConnection.send("MSTOP\n");
+        switch (mMovementCommand) {
+            case NONE:
+                if (mMotorState != MotorState.STOP) {
+                    stop();
+                }
+                break;
+
+            case TARGET_X:
+                double targetX = mMovementCommandValue;
+                double deltaX = targetX - mPose.x;
+                if (Math.abs(mPose.theta) > Math.PI / 2.0) { deltaX = -deltaX; }
+                if (deltaX > DISTANCE_THRESHOLD) {
+                    forward();
+                } else if (deltaX < -DISTANCE_THRESHOLD) {
+                    backward();
+                } else {
+                    stop();
+                    mMovementCommand = MovementCommand.NONE;
+                }
+                break;
+
+            case TARGET_Y:
+                double targetY = mMovementCommandValue;
+                double deltaY = targetY - mPose.y;
+                if (mPose.theta < 0) { deltaY = -deltaY; }
+                if (deltaY > DISTANCE_THRESHOLD) {
+                    forward();
+                } else if (deltaY < -DISTANCE_THRESHOLD) {
+                    backward();
+                } else {
+                    stop();
+                    mMovementCommand = MovementCommand.NONE;
+                }
+                break;
+
+            case TARGET_ANGLE:
+                double targetTheta = mMovementCommandValue;
+                double deltaTheta = Localization.normalizeAngle(targetTheta - mPose.theta);
+                if (deltaTheta > ANGLE_THRESHOLD) {
+                    right();
+                } else if (deltaTheta < -ANGLE_THRESHOLD) {
+                    left();
+                } else {
+                    mMovementCommand = MovementCommand.NONE;
+                }
+                break;
         }
+
     }
 
     Runnable DriveUpdateRunnable = new Runnable() {
@@ -137,16 +281,17 @@ public class DriveService extends Service {
             try {
                 // do work
                 frameCount++;
-                if (mCooldown > 0) { mCooldown--; }
-                printTags();
+                if (mMotorCooldown > 0) { mMotorCooldown--; }
                 if (mBodyConnection.isConnected()) {
                     //readLidar();
                     updateLocation();
+                    updateNavigation();
+                    updateMovementCommand();
                     updateMotor();
                     mBodyConnection.handleInput();
                 } else {
                     Log.d(TAG, "Attempting to connect");
-                    mBodyConnection.connect(mContext);
+                    mBodyConnection.connect(DriveService.this);
                 }
             } finally {
                 mHandler.postDelayed(this, DELAY_MS);
