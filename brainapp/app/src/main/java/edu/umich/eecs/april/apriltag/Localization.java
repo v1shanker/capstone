@@ -17,7 +17,7 @@ class Localization {
 
     private final static double PIXELS_PER_METER = SCREEN_DPI * INCHES_PER_METER;
 
-    private final static double CALIBRATION_FACTOR = 2.54;
+    private final static double CALIBRATION_FACTOR = 0.82;
 
     private final static double CAMERA_HEIGHT_METERS = 0.2;
     private final static double CAMERA_OFFSET_FORWARD_METERS = -0.0285;
