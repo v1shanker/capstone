@@ -37,6 +37,36 @@ typedef struct _rplidar_response {
 	uint16_t distance;
 } __attribute__((packed)) rplidar_data;
 
+static inline void lidar_sendBytes(char *buffer, size_t n){
+	uart_write_bytes(LIDAR_PORT, buffer, n);
+}
+
+static inline void checkClearState(){
+	char stop[2] = {0xA5,0x25};
+	size_t buffered_len;
+	
+	uart_get_buffered_data_len(LIDAR_PORT, &buffered_len);
+	
+	while (buffered_len != 0){
+		lidar_sendBytes(stop,2);
+		uart_flush(LIDAR_PORT);
+		vTaskDelay(2/portTICK_PERIOD_MS);
+		uart_get_buffered_data_len(LIDAR_PORT, &buffered_len);
+	}
+	
+	uart_pattern_queue_reset(LIDAR_PORT, 20);
+	xQueueReset(lidar_uart_queue);
+}
+
+static inline void reset(){
+	char request[2] = {0xA5, 0x40};
+	
+	lidar_sendBytes(request, 2);
+	vTaskDelay(10/portTICK_RATE_MS);
+	
+	checkClearState();
+}
+
 void getHeader(uint8_t *buffer, size_t bytes_required){
 	
 	int pos;
@@ -68,10 +98,6 @@ void getHeader(uint8_t *buffer, size_t bytes_required){
 		}
 	}
 }
-	
-void lidar_sendBytes(char *buffer, size_t n){
-	uart_write_bytes(LIDAR_PORT, buffer, n);
-}
 
 /*
  * @brief Send scan command to LIDAR and collects result
@@ -101,7 +127,9 @@ int lidarScan(rplidar_data *output){
 	getHeader(header,20);
 	
 	uart_read_bytes(LIDAR_PORT, temp, 3600, portMAX_DELAY);
+	
 	lidar_sendBytes(stop,2);
+	uart_flush(LIDAR_PORT);
 	
 	rplidar_data* buffer = (rplidar_data *)(temp);
 	
@@ -143,18 +171,7 @@ int lidarScan(rplidar_data *output){
 	count = index - startIndex;
 	memcpy(output, &(buffer[startIndex]), count*5);
 	
-	/* Clear FIFO buffer */
-	uart_flush(LIDAR_PORT);
-	uart_pattern_queue_reset(LIDAR_PORT, 20);
-	xQueueReset(lidar_uart_queue);
-	
-	uart_get_buffered_data_len(LIDAR_PORT, &buffered_len);
-	while (buffered_len != 0){
-		lidar_sendBytes(stop,2);
-		uart_flush(LIDAR_PORT);
-		vTaskDelay(2/portTICK_PERIOD_MS);
-		uart_get_buffered_data_len(LIDAR_PORT, &buffered_len);
-	}
+	checkClearState();
 	
 	/*
 	for (int pos = 0; pos < count; pos++) {
@@ -243,21 +260,23 @@ int doScan(output_info *output){
 	return 0;
 }
 
+
 void lidar_main(){
 	output_info response;
 	char message[MESSAGE_LEN];
 	int result;
-	char stop[2] = {0xA5,0x25};
+	char request[2] = {0xA5, 0x25};
 	
-	lidar_sendBytes(stop,2);
+	lidar_sendBytes(request, 2);
+	vTaskDelay(500/portTICK_PERIOD_MS);
+	//reset();
 	
-	doScan(&response);
+	//doScan(&response);
 	response.outcome = 1;
 	response.type = 'L';
-	
+	printf("We ready\n");
 	for (;;){
 		if (xQueueReceive(lidar_in_queue, (void *)(message),(portTickType)portMAX_DELAY)){	
-			//printf("LIDAR Task: Message from android: %s\n",message);
 			if (!strcmp(message,"LSCAN")){
 				printf("Lsend\n");
 				xQueueSend(android_out_queue, (void *)(&response), (portTickType)portMAX_DELAY);

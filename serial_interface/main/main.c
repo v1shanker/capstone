@@ -51,15 +51,14 @@ static void android_rx_main()
 						if (!xQueueSend(motor_in_queue, (void *)(message), 2000/portTICK_RATE_MS)){
 							printf("Killing motor task\n");
 							vTaskDelete(motor_handle);
-							
+							xQueueReset(motor_in_queue);
+							xTaskCreate(motor_main, "motor_interface",4096, NULL,1, &motor_handle);
 						}
 					}
 
 					/* Send to LIDAR */
 					else if (message[0] == 'L'){
 						xQueueSend(lidar_in_queue, (void *)(message), (portTickType)portMAX_DELAY);
-						xQueueReset(motor_in_queue);
-						xTaskCreate(motor_main, "motor_interface",4096, NULL,1, &motor_handle);
 					}
 
 					else {
@@ -144,11 +143,6 @@ void app_main()
     uart_driver_install(LIDAR_PORT, L_RX_SIZE, L_TX_SIZE, 1000, &lidar_uart_queue, 0);
     uart_enable_pattern_det_intr(LIDAR_PORT, (char)0x81, PATTERN_NUM, 10000, 10, 10);
 	
-	/* Enable interrupts for LIDAR port */
-	//uart_intr_config(LIDAR_PORT, &lidar_intr);
-	//uart_enable_intr_mask(LIDAR_PORT, UART_RXFIFO_FULL_INT_ENA);
-	//uart_isr_register(LIDAR_PORT, lidar_uart_isr, 0, ESP_INTR_FLAG_IRAM, 0);
-	
     /* Reset the pattern queue length to record at most 20 pattern positions. */
     uart_pattern_queue_reset(LIDAR_PORT, 20);
 
@@ -167,7 +161,7 @@ void app_main()
 
     xTaskCreate(android_rx_main, "android_rx, interface", 4096, NULL, 1, NULL);
 	xTaskCreate(android_tx_main, "android_tx, interface", 4096, NULL, 1, NULL);
-	//xTaskCreate(lidar_main, "lidar_interface", 16000, NULL, 1, &lidar_handle);
+	//xTaskCreate(lidar_main, "lidar_interface", 16000, NULL, 2, &lidar_handle);
 	xTaskCreate(motor_main, "motor_interface",4096, NULL,1, &motor_handle);
 }
 

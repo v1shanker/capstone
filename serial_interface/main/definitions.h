@@ -23,7 +23,7 @@
 #define SERIAL_CTS  (UART_PIN_NO_CHANGE)
 
 #define L_RX_SIZE (8192)
-#define L_TX_SIZE (512)
+#define L_TX_SIZE (0)
 
 #define A_RX_SIZE (512)
 #define A_TX_SIZE (0)

@@ -172,7 +172,7 @@ void getMessage(){
 			} else if (!strcmp(message, "MRIGHT")){
 				printf("TUrn right\n");
 				set_speed_and_dir(100, REVERSE, FORWARD);
-				vTaskDelay(550/portTICK_PERIOD_MS);
+				vTaskDelay(375/portTICK_PERIOD_MS);
 				set_speed_and_dir(0, FORWARD, FORWARD);
 				
 				response.type = 'M';
@@ -182,7 +182,7 @@ void getMessage(){
 				printf("Turn left\n");
 				
 				set_speed_and_dir(100, FORWARD, REVERSE);
-				vTaskDelay(550/portTICK_PERIOD_MS);
+				vTaskDelay(375/portTICK_PERIOD_MS);
 				set_speed_and_dir(0, FORWARD, FORWARD);
 				
 				response.type = 'M';
@@ -212,7 +212,6 @@ void getMessage(){
 
 void motor_main() {
     set_speed_and_dir(0, FORWARD, FORWARD);
-	turn_dir = T_NONE;
     gpio_setup();
     timer_pwm_interrupts_init();
 	getMessage();
