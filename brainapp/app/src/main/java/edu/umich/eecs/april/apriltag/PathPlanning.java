@@ -77,15 +77,15 @@ public class PathPlanning {
     public static ArrayList<Point> findPath(Point start, Point end) {
         LocalizationMap lmap = LocalizationMap.getInstance();
         ArrayList<Point> path;
-        path = checkVerticalPathFirst(start, end, lmap);
-        if (path != null) {
-            return path;
-        }
+
         path = checkHorizontalPathFirst(start, end, lmap);
         if (path != null) {
             return path;
         }
-
+        path = checkVerticalPathFirst(start, end, lmap);
+        if (path != null) {
+            return path;
+        }
         return null;
     }
 

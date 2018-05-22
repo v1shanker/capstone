@@ -17,13 +17,13 @@ class Localization {
 
     private final static double PIXELS_PER_METER = SCREEN_DPI * INCHES_PER_METER;
 
-    private final static double CALIBRATION_FACTOR = 0.082;
+    private final static double CALIBRATION_FACTOR = 0.752;
 
     private final static double CAMERA_HEIGHT_METERS = 0.2;
     private final static double CAMERA_OFFSET_FORWARD_METERS = -0.0285;
     private final static double CAMERA_OFFSET_RIGHT_METERS = 0.062;
 
-    private final static double GRID_SCALE_METERS = 0.10;
+    private final static double GRID_SCALE_METERS = 0.25;
 
     private double camCenterX;
     private double camCenterY;
@@ -60,7 +60,7 @@ class Localization {
             return null;
         }
 
-        double tagHeight = 2.54 - CAMERA_HEIGHT_METERS;
+        double tagHeight = 3.62 - CAMERA_HEIGHT_METERS;
         double tagPosX = tagPose.x;
         double tagPosY = tagPose.y;
         double phi = tagPose.theta;
@@ -70,13 +70,12 @@ class Localization {
 
         // calculate vector RT (robot to tag) first in rectangular pixel-sized grid
         // lower y = forward, lower x = right
-        double tagOffsetFwd = camCenterY - tagCenterY + CAMERA_OFFSET_FORWARD_METERS;
-        double tagOffsetRight = camCenterX - tagCenterX + CAMERA_OFFSET_RIGHT_METERS;
+        double tagOffsetFwd = scalePxToWorld(camCenterY - tagCenterY, tagHeight) + CAMERA_OFFSET_FORWARD_METERS;
+        double tagOffsetRight = scalePxToWorld(camCenterX - tagCenterX, tagHeight) + CAMERA_OFFSET_RIGHT_METERS;
 
         // transform RT to polar meter-sized coordinate system
-        double radiusPx = Math.sqrt(tagOffsetRight * tagOffsetRight +
+        double radiusRT = Math.sqrt(tagOffsetRight * tagOffsetRight +
                                     tagOffsetFwd * tagOffsetFwd);
-        double radiusRT = scalePxToWorld(radiusPx, tagHeight);
         double thetaRT = Math.atan2(tagOffsetFwd, tagOffsetRight);
 
         // T hat is the tag's orientation within the robot-centric coordinate system

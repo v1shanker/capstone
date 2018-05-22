@@ -17,7 +17,7 @@ public class DriveService extends Service {
     public static final String WIDTH = "Width";
 
     private static final String TAG = "DriveService";
-    private static final long DELAY_MS = 250;
+    private static final long DELAY_MS = 1000;
     private Handler mHandler = null;
     private SystemState mSystemState = SystemState.getInstance();
     private BodyConnection mBodyConnection = BodyConnection.getInstance();
@@ -26,15 +26,16 @@ public class DriveService extends Service {
     private long frameCount = 0;
 
     private static final int STARTUP_COOLDOWN = 10;
-    private static final int TURN_COOLDOWN = 20;
+    private static final int TURN_COOLDOWN = 30;
 
-    private static double DISTANCE_THRESHOLD = 0.08;
-    private static double ANGLE_THRESHOLD = Math.PI / 4.0;
+    private static final double DISTANCE_THRESHOLD = 0.1;
+    private static final double ANGLE_THRESHOLD = Math.PI / 4.0;
 
     private Pose mPose;
 
     private Point mPoint;
     private Point mTarget;
+    private Point mNavPoint;
     private List<Point> mNavigationPath;
 
     private enum MovementCommand {
@@ -55,16 +56,28 @@ public class DriveService extends Service {
         mMotorState = MotorState.UNKNOWN;
         mMotorCooldown = STARTUP_COOLDOWN;
 
-        mTarget = new Point(Localization.worldToGrid(0.031), Localization.worldToGrid(-0.472));
+        mTarget = new Point(Localization.worldToGrid(0.0), Localization.worldToGrid(0.0));
         mNavigationPath = null;
 
         mMovementCommand = MovementCommand.NONE;
 
         LocalizationMap m = LocalizationMap.getInstance();
-        m.setPointLocation(0, new Pose(0.0, 0.0, 0.0));
-        m.setPointLocation(1, new Pose(0.61, 0.023, 0.02));
-        m.setPointLocation(5, new Pose(0.031, -0.472, -Math.PI+0.01));
-        m.setPointLocation(6, new Pose(0.63, -0.463, 0.0));
+        // harbour table area
+//        m.setPointLocation(0, new Pose(0.0, 0.0, 0.0));
+//        m.setPointLocation(1, new Pose(0.66, 0.023, 0.02));
+//        m.setPointLocation(5, new Pose(0.031, -0.522, -Math.PI+0.01));
+//        m.setPointLocation(6, new Pose(0.68, -0.513, 0.0));
+
+        // harbour tv area
+//        m.setPointLocation(4, new Pose(0.0, 0.0, 0.0));
+
+        // rowe's lab
+        m.setPointLocation(22, new Pose(0.0, 0.0, Math.PI));
+        m.setPointLocation(20, new Pose(-0.6, 0.78, -1.58));
+        m.setPointLocation(21, new Pose(0.448, 0.844, -1.06));
+        m.setPointLocation(23, new Pose(-0.81, 1.8, -1.54));
+
+
     }
 
     public void readLidar() {
@@ -73,17 +86,18 @@ public class DriveService extends Service {
 
     public void updateLocation() {
         List<ApriltagDetection> tags = mSystemState.getDetectedTagList();
-        if (tags == null || tags.isEmpty()) { return; }
+        if (tags == null) { return; }
         List<Pose> poseEstimations = new ArrayList<>();
         for (ApriltagDetection tag : tags) {
             Pose p = mLocalization.getPoseFromTag(tag);
             if (p != null) {
+                Log.v(TAG, String.format("%d: %f, %f, %f", tag.id, p.x, p.y, p.theta));
                 poseEstimations.add(p);
             }
         }
 
         if (poseEstimations.isEmpty()) {
-            Log.d(TAG, "No tags to localize to");
+            Log.v(TAG, "No tags to localize to");
             return;
         }
 
@@ -102,7 +116,7 @@ public class DriveService extends Service {
                          totalY / poseEstimations.size(),
                          Math.atan2(totalSin, totalCos));
 
-        Log.d(TAG, String.format("Pose: %f, %f, %f", mPose.x, mPose.y, mPose.theta));
+        Log.i(TAG, String.format("Pose: %f, %f, %f", mPose.x, mPose.y, mPose.theta));
     }
 
     public void updateNavigation() {
@@ -115,10 +129,11 @@ public class DriveService extends Service {
         if (mNavigationPath == null || !mNavigationPath.contains(mPoint)) {
             Log.i(TAG, "Navigation: Recalculating path");
             mNavigationPath = PathPlanning.findPath(mPoint, mTarget);
+            mNavPoint = mPoint;
             mMovementCommand = MovementCommand.NONE;
-            Log.d(TAG, String.format("(%d, %d) -> (%d, %d)", mPoint.getXCoord(), mPoint.getYCoord(),
-                    mTarget.getXCoord(), mTarget.getYCoord()));
-            Log.d(TAG, mNavigationPath.toString());
+            for (Point p : mNavigationPath) {
+                Log.i(TAG, String.format("(%d,%d)", p.getXCoord(), p.getYCoord()));
+            }
         }
     }
 
@@ -145,13 +160,14 @@ public class DriveService extends Service {
     public void updateMovementCommand() {
         if (mPose == null || mNavigationPath == null || mNavigationPath.isEmpty()) { return; }
 
-        if (mMovementCommand == MovementCommand.NONE && mPoint != mTarget) {
+        if (mMovementCommand == MovementCommand.NONE && mNavPoint != mTarget) {
             int i = mNavigationPath.indexOf(mPoint);
             int j = i+1;
+            if (j == mNavigationPath.size()) { return; }
             Point next = mNavigationPath.get(j);
 
             // first check if a turn is needed
-            double toGo = getAngle(mPoint, next);
+            double toGo = getAngle(mNavPoint, next);
             if (Math.abs(angleDiff(toGo, mPose.theta)) > ANGLE_THRESHOLD) {
                 Log.i(TAG, String.format("MovementCommand: Turn from %f to %f", mPose.theta, toGo));
                 mMovementCommand = MovementCommand.TARGET_ANGLE;
@@ -159,28 +175,28 @@ public class DriveService extends Service {
                 return;
             }
 
-            if (mPoint.getXCoord() == next.getXCoord()) {
+            if (mNavPoint.getXCoord() == next.getXCoord()) {
                 // keep increasing index as long as x coord doesn't change
                 int targetIndex = j;
                 while (targetIndex < mNavigationPath.size() - 1 &&
-                        mPoint.getXCoord() == mNavigationPath.get(targetIndex + 1).getXCoord()) {
+                        mNavPoint.getXCoord() == mNavigationPath.get(targetIndex + 1).getXCoord()) {
                     targetIndex++;
                 }
                 int targetY = mNavigationPath.get(targetIndex).getYCoord();
                 Log.i(TAG, String.format("MovementCommand: Go from y=%d to y=%d",
-                        mPoint.getYCoord(), targetY));
+                        mNavPoint.getYCoord(), targetY));
                 mMovementCommand = MovementCommand.TARGET_Y;
                 mMovementCommandValue = Localization.gridToWorld(targetY);
             } else {
                 // keep increasing index as long as y coord doesn't change
                 int targetIndex = j;
                 while (targetIndex < mNavigationPath.size() - 1 &&
-                        mPoint.getYCoord() == mNavigationPath.get(targetIndex + 1).getYCoord()) {
+                        mNavPoint.getYCoord() == mNavigationPath.get(targetIndex + 1).getYCoord()) {
                     targetIndex++;
                 }
                 int targetX = mNavigationPath.get(targetIndex).getXCoord();
                 Log.i(TAG, String.format("MovementCommand: Go from x=%d to x=%d",
-                        mPoint.getXCoord(), targetX));
+                        mNavPoint.getXCoord(), targetX));
                 mMovementCommand = MovementCommand.TARGET_X;
                 mMovementCommandValue = Localization.gridToWorld(targetX);
             }
@@ -189,21 +205,21 @@ public class DriveService extends Service {
 
     private void stop() {
         if (mMotorState == MotorState.STOP) { return; }
-        Log.d(TAG, "Motor: Stop");
+//        Log.d(TAG, "Motor: Stop");
         mMotorState = MotorState.STOP;
         mBodyConnection.send("MSTOP\n");
     }
 
     private void forward() {
         if (mMotorState == MotorState.FORWARD) { return; }
-        Log.d(TAG, "Motor: Forward");
+//        Log.d(TAG, "Motor: Forward");
         mMotorState = MotorState.FORWARD;
         mBodyConnection.send("MFWD\n");
     }
 
     private void backward() {
         if (mMotorState == MotorState.BACKWARD) { return; }
-        Log.d(TAG, "Motor: Backward");
+//        Log.d(TAG, "Motor: Backward");
         mMotorState = MotorState.BACKWARD;
         mBodyConnection.send("MBACK\n");
     }
@@ -213,8 +229,8 @@ public class DriveService extends Service {
         if (mMotorState != MotorState.STOP) {
             stop();
         }
-        Log.d(TAG, "Motor: Right");
-        mMotorState = MotorState.RIGHT;
+//        Log.d(TAG, "Motor: Right");
+        mMotorState = MotorState.STOP;
         mBodyConnection.send("MRIGHT\n");
         mMotorCooldown = TURN_COOLDOWN;
     }
@@ -224,8 +240,8 @@ public class DriveService extends Service {
         if (mMotorState != MotorState.STOP) {
             stop();
         }
-        Log.d(TAG, "Motor: Left");
-        mMotorState = MotorState.LEFT;
+//        Log.d(TAG, "Motor: Left");
+        mMotorState = MotorState.STOP;
         mBodyConnection.send("MLEFT\n");
         mMotorCooldown = TURN_COOLDOWN;
     }
@@ -290,9 +306,9 @@ public class DriveService extends Service {
                 // do work
                 frameCount++;
                 if (mMotorCooldown > 0) { mMotorCooldown--; }
+                updateLocation();
                 if (mBodyConnection.isConnected()) {
                     //readLidar();
-                    updateLocation();
                     updateNavigation();
                     updateMovementCommand();
                     updateMotor();

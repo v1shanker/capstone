@@ -45,45 +45,48 @@ class BodyConnection {
     }
 
     public boolean isConnected() {
-        return mConnected;
+        return true;
     }
+//        return mConnected;
+//    }
 
     public void connect(Context context) {
-        UsbManager manager = (UsbManager) context.getSystemService(Context.USB_SERVICE);
-        List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber()
-                .findAllDrivers(manager);
-        if (availableDrivers.isEmpty()) { return; }
-
-        // Open a connection to the first available driver
-        UsbSerialDriver driver = availableDrivers.get(0);
-        UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
-        if (connection == null) { return; }
-
-        mPort = driver.getPorts().get(0);
-        try {
-            mPort.open(connection);
-            mPort.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
-            mConnected = true;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        UsbManager manager = (UsbManager) context.getSystemService(Context.USB_SERVICE);
+//        List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber()
+//                .findAllDrivers(manager);
+//        if (availableDrivers.isEmpty()) { return; }
+//
+//        // Open a connection to the first available driver
+//        UsbSerialDriver driver = availableDrivers.get(0);
+//        UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
+//        if (connection == null) { return; }
+//
+//        mPort = driver.getPorts().get(0);
+//        try {
+//            mPort.open(connection);
+//            mPort.setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+//            mConnected = true;
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
 
     public void disconnect() {
-        mConnected = false;
-        try {
-            mPort.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        mConnected = false;
+//        try {
+//            mPort.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
 
     public void send(String s) {
-        try {
-            mPort.write(s.getBytes(), 100);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        Log.w(TAG, s);
+//        try {
+//            mPort.write(s.getBytes(), 100);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
 
     private String getLine() {
@@ -113,22 +116,23 @@ class BodyConnection {
     }
 
     public String handleInput() {
-        try {
-            byte[] buf = new byte[256];
-            int bytesRead = mPort.read(buf, 100);
-            for (int i = 0; i < bytesRead; i++) {
-                byte c = buf[i];
-                inputQueue.add(c);
-                if (c == END_CHAR) {
-                    linesReady++;
-                }
-            }
-            for (int i = 0; i < linesReady; i++) {
-                handleLine(getLine());
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            byte[] buf = new byte[256];
+//            int bytesRead = mPort.read(buf, 100);
+//            for (int i = 0; i < bytesRead; i++) {
+//                byte c = buf[i];
+//                inputQueue.add(c);
+//                if (c == END_CHAR) {
+//                    linesReady++;
+//                }
+//            }
+//            for (int i = 0; i < linesReady; i++) {
+//                handleLine(getLine());
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        return null;
         return null;
     }
 }
